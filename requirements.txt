@@ -1,20 +1,13 @@
-from flask import Flask, request, Response, jsonify
-import pandas as pd
-from flask_cors import CORS, cross_origin
-from datetime import datetime
-import os
-import json
-import requests
-import pysftp
-from datetime import datetime
-from io import BytesIO
-import credentials
-import functions as fn
-from PIL import Image
-import validators
-from openpyxl.workbook import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from flask_api import status
-from openpyxl.worksheet.datavalidation import DataValidation
-import gspread
-from wakepy import keep
+Flask==2.3.2
+Flask_API==3.1
+Flask_Cors==4.0.0
+gspread==5.10.0
+numpy==1.24.3
+openpyxl==3.1.2
+pandas==2.0.2
+Pillow==10.0.0
+pysftp==0.2.9
+rembg==2.0.49
+Requests==2.31.0
+validators==0.20.0
+wakepy==0.7.1
