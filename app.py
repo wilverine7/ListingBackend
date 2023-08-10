@@ -912,7 +912,7 @@ def downloadTest():
     )
 
 
-# used
+# used for CSV page
 @app.route("/DeleteImage", methods=["POST"])
 def DeleteImage():
     url = request.form["url"]
@@ -989,6 +989,34 @@ def DeleteImage():
         print(f"Error: {str(e)}")
     dfJson = df.to_json(orient="index")
     return jsonify(dfJson)
+
+#used for single image page
+@app.route("/DeleteSingleImage", methods=["POST"])
+def DeleteSingleImage():
+    sku = request.form["sku"]
+    imageNumber = request.form["imageNumber"]
+    folder_name = datetime.today().strftime("%Y-%m-%d")
+
+    server_path = f"public_html/media/L9/{folder_name}/{sku}_{imageNumber}.jpg"
+    hostname = credentials.hostname
+    username = credentials.username
+    password = credentials.password
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
+
+    try:
+        with pysftp.Connection(
+            hostname, username=username, password=password, cnopts=cnopts
+        ) as sftp:
+            sftp.remove(server_path)
+            sftp.close()
+    except Exception as e:
+        print(f"Error: {str(e)}")
+    
+    return "success"
+
+
 
 
 if __name__ == "__main__":
