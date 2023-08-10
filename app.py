@@ -492,7 +492,6 @@ def UrlUpload():
                 print(f"Error: {str(e)}")
                 return "Error", 400
 
-
 # used
 @app.route("/ImageCsvTest", methods=["GET", "POST"])
 @cross_origin(supports_credentials=True)
@@ -1015,9 +1014,6 @@ def DeleteSingleImage():
         print(f"Error: {str(e)}")
     
     return "success"
-
-
-
 
 if __name__ == "__main__":
     app.run()
