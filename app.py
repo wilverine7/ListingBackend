@@ -25,6 +25,9 @@ app.config["SECRET_KEY"] = os.urandom(28)
 
 CORS(app, supports_credentials=True)
 
+@app.route("/", methods=["GET"])
+def index():
+    return "This is a running API!"
 
 # used
 ## endpoint for uploading an elastic listing file
