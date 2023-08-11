@@ -511,13 +511,14 @@ def ImageCsvTest():
             # if the url doesn't work, keep track of it and remove it from the df
             BrokenUrlDict = {}
 
-            columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
+            if not folder:
+                columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
 
-            if all(value in df.columns for value in columnList):
-                print("All values are present in column names.")
-            else:
-                error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
-                return error, status.HTTP_400_BAD_REQUEST
+                if all(value in df.columns for value in columnList):
+                    print("All values are present in column names.")
+                else:
+                    error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
+                    return error, status.HTTP_400_BAD_REQUEST
             df.dropna(subset=["Image 1"], inplace=True)
             df_copy = df.dropna(axis=1, how="all")
             folder_name = datetime.today().strftime("%Y-%m-%d")
