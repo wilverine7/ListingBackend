@@ -414,7 +414,9 @@ def UrlUpload():
                             "flag": flag,
                             "displayImage": displayImage,
                         }
-                        return data
+                        response = data
+                        response.headers.add("Access-Control-Allow-Origin", "*")
+                        return resposnse
                     else:
                         with sftp.cd("public_html/media/L9/"):
                             if sftp.exists(folder_name):
@@ -437,9 +439,10 @@ def UrlUpload():
                 error = "Error connecting to server"
                 return error
 
-        data = {"displayImage": BikeWagonUrl, "flag": False}
+        response = {"displayImage": BikeWagonUrl, "flag": False}
+        response.headers.add("Access-Control-Allow-Origin", "*")
 
-        return data, 200
+        return response
     else:
         if remBg:
             # code to remove background
@@ -471,7 +474,9 @@ def UrlUpload():
                             "flag": flag,
                             "displayImage": displayImage,
                         }
-                        return data
+                        response = data
+                        response.headers.add("Access-Control-Allow-Origin", "*")
+                        return response
                     else:
                         with sftp.cd("public_html/media/L9/"):
                             if sftp.exists(folder_name):
@@ -488,8 +493,9 @@ def UrlUpload():
 
                         # close connection
                         sftp.close()
-                        data = {"displayImage": BikeWagonUrl, "flag": False}
-                        return data, 200
+                        resposnse = {"displayImage": BikeWagonUrl, "flag": False}
+                        response.headers.add("Access-Control-Allow-Origin", "*")
+                        return response
 
             except Exception as e:
                 print(f"Error: {str(e)}")
