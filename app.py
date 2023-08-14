@@ -361,7 +361,7 @@ def ListingUpload():
 
 # used
 # Endpoint to upload a single image from the url
-@app.route("/UrlUpload", methods=["GET", "POST"])
+@app.route("/UrlUpload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def UrlUpload():
     imagePath = request.form["url"]
