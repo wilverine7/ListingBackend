@@ -362,144 +362,147 @@ def ListingUpload():
 # used
 # Endpoint to upload a single image from the url
 @app.route("/UrlUpload", methods=["GET", "POST"])
-@cross_origin(supports_credentials=True)
+# @cross_origin(supports_credentials=True)
 def UrlUpload():
-    imagePath = request.form["url"]
-    sku = request.form["sku"]
-    sku.replace(" ", "")
-    imgNum = request.form["imageNumber"]
-    flag = request.form["flag"] == "true"
-    remBg = request.form["removeBackground"] == "true"
-    imageName = f"{sku}_Img{imgNum}"
-    folder_name = datetime.today().strftime("%Y-%m-%d")
-    # creates a variable to pass to the html page to display the image and url
-    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-    if validators.url(imagePath):
-        try:
-            # open the image from the url
-            response = requests.get(imagePath, stream=True)
-        except:
-            error = "Invalid URL"
-            # if the image wouldn't open then the url is invalid
-            return error
-
-        # if the user wants to remove background it processes here.
-        if remBg:
-            # code to remove background
-            BikeWagonUrl = fn.removeBackground(imagePath, imageName)
-
-        else:
-            # connect to server
-            hostname = os.getenv("hostname")
-            username = os.getenv("username")
-            password = os.getenv("password")
-
-            cnopts = pysftp.CnOpts()
-            cnopts.hostkeys = None
-
-            server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
-
+    if request.method == "GET":
+        return "GET UrlUpload"
+    else:
+        imagePath = request.form["url"]
+        sku = request.form["sku"]
+        sku.replace(" ", "")
+        imgNum = request.form["imageNumber"]
+        flag = request.form["flag"] == "true"
+        remBg = request.form["removeBackground"] == "true"
+        imageName = f"{sku}_Img{imgNum}"
+        folder_name = datetime.today().strftime("%Y-%m-%d")
+        # creates a variable to pass to the html page to display the image and url
+        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+        if validators.url(imagePath):
             try:
-                with pysftp.Connection(
-                    hostname, username=username, password=password, cnopts=cnopts
-                ) as sftp:
-                    if sftp.exists(server_path) and flag == False:
-                        flag = True
-                        error = (
-                            "Duplicate Image. Would you like to overwrite the image?"
-                        )
-                        displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-                        data = {
-                            "error": error,
-                            "flag": flag,
-                            "displayImage": displayImage,
-                        }
-                        response = data
-                        response.headers.add("Access-Control-Allow-Origin", "*")
-                        return resposnse
-                    else:
-                        with sftp.cd("public_html/media/L9/"):
-                            if sftp.exists(folder_name):
-                                pass
-                            else:
-                                # create new directory at public_html/media/L9/ with the folder_name variable
-                                sftp.mkdir(folder_name)
-
-                        image = Image.open(BytesIO(response.content)).convert("RGBA")
-
-                        # process the image by passing PIL image to the function
-                        image_io = fn.process_image(image)
-                        sftp.putfo(image_io, server_path)
-
-                        # close connection
-                        sftp.close()
-
-            except Exception as e:
-                print(e)
-                error = "Error connecting to server"
+                # open the image from the url
+                response = requests.get(imagePath, stream=True)
+            except:
+                error = "Invalid URL"
+                # if the image wouldn't open then the url is invalid
                 return error
 
-        response = {"displayImage": BikeWagonUrl, "flag": False}
-        response.headers.add("Access-Control-Allow-Origin", "*")
+            # if the user wants to remove background it processes here.
+            if remBg:
+                # code to remove background
+                BikeWagonUrl = fn.removeBackground(imagePath, imageName)
 
-        return response
-    else:
-        if remBg:
-            # code to remove background
-            BikeWagonUrl = fn.removeBackground(imagePath, imageName)
+            else:
+                # connect to server
+                hostname = os.getenv("hostname")
+                username = os.getenv("username")
+                password = os.getenv("password")
 
+                cnopts = pysftp.CnOpts()
+                cnopts.hostkeys = None
+
+                server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+
+                try:
+                    with pysftp.Connection(
+                        hostname, username=username, password=password, cnopts=cnopts
+                    ) as sftp:
+                        if sftp.exists(server_path) and flag == False:
+                            flag = True
+                            error = (
+                                "Duplicate Image. Would you like to overwrite the image?"
+                            )
+                            displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+                            data = {
+                                "error": error,
+                                "flag": flag,
+                                "displayImage": displayImage,
+                            }
+                            response = data
+                            response.headers.add("Access-Control-Allow-Origin", "*")
+                            return response
+                        else:
+                            with sftp.cd("public_html/media/L9/"):
+                                if sftp.exists(folder_name):
+                                    pass
+                                else:
+                                    # create new directory at public_html/media/L9/ with the folder_name variable
+                                    sftp.mkdir(folder_name)
+
+                            image = Image.open(BytesIO(response.content)).convert("RGBA")
+
+                            # process the image by passing PIL image to the function
+                            image_io = fn.process_image(image)
+                            sftp.putfo(image_io, server_path)
+
+                            # close connection
+                            sftp.close()
+
+                except Exception as e:
+                    print(e)
+                    error = "Error connecting to server"
+                    return error
+
+            response = {"displayImage": BikeWagonUrl, "flag": False}
+            response.headers.add("Access-Control-Allow-Origin", "*")
+
+            return response
         else:
-            # connect to server
-            hostname = os.getenv("hostname")
-            username = os.getenv("username")
-            password = os.getenv("password")
+            if remBg:
+                # code to remove background
+                BikeWagonUrl = fn.removeBackground(imagePath, imageName)
 
-            cnopts = pysftp.CnOpts()
-            cnopts.hostkeys = None
+            else:
+                # connect to server
+                hostname = os.getenv("hostname")
+                username = os.getenv("username")
+                password = os.getenv("password")
 
-            server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+                cnopts = pysftp.CnOpts()
+                cnopts.hostkeys = None
 
-            try:
-                with pysftp.Connection(
-                    hostname, username=username, password=password, cnopts=cnopts
-                ) as sftp:
-                    if sftp.exists(server_path) and flag == False:
-                        flag = True
-                        error = (
-                            "Duplicate Image. Would you like to overwrite the image?"
-                        )
-                        displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-                        data = {
-                            "error": error,
-                            "flag": flag,
-                            "displayImage": displayImage,
-                        }
-                        response = data
-                        response.headers.add("Access-Control-Allow-Origin", "*")
-                        return response
-                    else:
-                        with sftp.cd("public_html/media/L9/"):
-                            if sftp.exists(folder_name):
-                                pass
-                            else:
-                                # create new directory at public_html/media/L9/ with the folder_name variable
-                                sftp.mkdir(folder_name)
+                server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
 
-                        image = Image.open(imagePath).convert("RGBA")
+                try:
+                    with pysftp.Connection(
+                        hostname, username=username, password=password, cnopts=cnopts
+                    ) as sftp:
+                        if sftp.exists(server_path) and flag == False:
+                            flag = True
+                            error = (
+                                "Duplicate Image. Would you like to overwrite the image?"
+                            )
+                            displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+                            data = {
+                                "error": error,
+                                "flag": flag,
+                                "displayImage": displayImage,
+                            }
+                            response = data
+                            response.headers.add("Access-Control-Allow-Origin", "*")
+                            return response
+                        else:
+                            with sftp.cd("public_html/media/L9/"):
+                                if sftp.exists(folder_name):
+                                    pass
+                                else:
+                                    # create new directory at public_html/media/L9/ with the folder_name variable
+                                    sftp.mkdir(folder_name)
 
-                        image_io = fn.process_image(image)
+                            image = Image.open(imagePath).convert("RGBA")
 
-                        sftp.putfo(image_io, server_path)
+                            image_io = fn.process_image(image)
 
-                        # close connection
-                        sftp.close()
-                        resposnse = {"displayImage": BikeWagonUrl, "flag": False}
-                        response.headers.add("Access-Control-Allow-Origin", "*")
-                        return response
+                            sftp.putfo(image_io, server_path)
 
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                return "Error", 400
+                            # close connection
+                            sftp.close()
+                            resposnse = {"displayImage": BikeWagonUrl, "flag": False}
+                            response.headers.add("Access-Control-Allow-Origin", "*")
+                            return response
+
+                except Exception as e:
+                    print(f"Error: {str(e)}")
+                    return "Error", 400
 
 # used
 @app.route("/ImageCsvTest", methods=["GET", "POST"])
