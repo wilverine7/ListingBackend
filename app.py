@@ -26,7 +26,8 @@ CORS(app, supports_credentials=True)
 
 @app.route("/", methods=["GET"])
 def index():
-    return "This is a running API!"
+    json = {"status": 200, "message": "This is a running API!"}
+    return jsonify(json)
 
 # used
 ## endpoint for uploading an elastic listing file
