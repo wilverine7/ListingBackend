@@ -22,7 +22,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(28)
 
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
 @app.route("/", methods=["GET"])
 def index():
