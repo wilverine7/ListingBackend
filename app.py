@@ -29,7 +29,7 @@ app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
-logging.basicConfig(filename='DebugLogs.log', encoding='utf-8', level=logging.INFO)
+logging.basicConfig(filename='DebugLogs.log', encoding='utf-8', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -385,6 +385,7 @@ def UrlUpload():
     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
     if validators.url(imagePath):
         logger.info(f"Image Path: {imagePath}")
+        logger.warning(f"Image Path: {imagePath}")
         try:
             # open the image from the url
             response = requests.get(imagePath, stream=True)
@@ -454,6 +455,8 @@ def UrlUpload():
                         print("Connection closed")
 
             except Exception as e:
+                logger.error(f"Error connecting to server: {e}")
+                logger.warning(f"Error connecting to server: {e}")
                 print(e)
                 error = "Error connecting to server"
                 return error
