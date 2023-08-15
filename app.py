@@ -21,10 +21,10 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -395,9 +395,13 @@ def UrlUpload():
 
         else:
             # connect to server
-            hostname = app.config["HOSTNAME"]
-            username = app.config["USERNAME"]
-            password = app.config["PASSWORD"]
+            # hostname = app.config["HOSTNAME"]
+            # username = app.config["USERNAME"]
+            # password = app.config["PASSWORD"]
+
+            hostname = os.getenv("hostname")
+            username = os.getenv("username")
+            password = os.getenv("password")
 
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
@@ -454,9 +458,12 @@ def UrlUpload():
 
         else:
             # connect to server
-            hostname = app.config["HOSTNAME"]
-            username = app.config["USERNAME"]
-            password = app.config["PASSWORD"]
+            # hostname = app.config["HOSTNAME"]
+            # username = app.config["USERNAME"]
+            # password = app.config["PASSWORD"]
+            hostname = os.getenv("hostname")
+            username = os.getenv("username")
+            password = os.getenv("password")
 
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
@@ -543,9 +550,12 @@ def ImageCsvTest():
             # doesn't require the export sheet. You can export the sourcing sheet
             # CaDf = pd.DataFrame(columns=["Inventory Number", "Picture URLs"])
             uniqueParentColor = df["Parent SKU_Color"].unique()
-            hostname = app.config["HOSTNAME"]
-            username = app.config["USERNAME"]
-            password = app.config["PASSWORD"]
+            # hostname = app.config["HOSTNAME"]
+            # username = app.config["USERNAME"]
+            # password = app.config["PASSWORD"]
+            hostname = os.getenv("hostname")
+            username = os.getenv("username")
+            password = os.getenv("password")
             columns = []
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
@@ -984,9 +994,12 @@ def DeleteImage():
     print(file)
 
     server_path = f"public_html/media{file}"
-    hostname = app.config["HOSTNAME"]
-    username = app.config["USERNAME"]
-    password = app.config["PASSWORD"]
+    # hostname = app.config["HOSTNAME"]
+    # username = app.config["USERNAME"]
+    # password = app.config["PASSWORD"]
+    hostname = os.getenv("hostname")
+    username = os.getenv("username")
+    password = os.getenv("password")
 
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
@@ -1010,9 +1023,12 @@ def DeleteSingleImage():
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
     server_path = f"public_html/media/L9/{folder_name}/{sku}_{imageNumber}.jpg"
-    hostname = app.config["HOSTNAME"]
-    username = app.config["USERNAME"]
-    password = app.config["PASSWORD"]
+    # hostname = app.config["HOSTNAME"]
+    # username = app.config["USERNAME"]
+    # password = app.config["PASSWORD"]
+    hostname = os.getenv("hostname")
+    username = os.getenv("username")
+    password = os.getenv("password")
 
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
