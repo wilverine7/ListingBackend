@@ -412,6 +412,10 @@ def UrlUpload():
             cnopts.hostkeys = None
 
             server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+            logger.info(f"username: {username}")
+            logger.info(f"password: {password}")
+            logger.info(f"hostname: {hostname}")
+
 
             try:
                 with pysftp.Connection(
