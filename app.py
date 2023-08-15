@@ -403,6 +403,7 @@ def UrlUpload():
                 with pysftp.Connection(
                     hostname, username=username, password=password, cnopts=cnopts
                 ) as sftp:
+                    print("Connection succesful")
                     if sftp.exists(server_path) and flag == False:
                         flag = True
                         error = (
@@ -431,6 +432,7 @@ def UrlUpload():
 
                         # close connection
                         sftp.close()
+                        print("Connection closed")
 
             except Exception as e:
                 print(e)
@@ -460,6 +462,7 @@ def UrlUpload():
                 with pysftp.Connection(
                     hostname, username=username, password=password, cnopts=cnopts
                 ) as sftp:
+                    print("Connection succesful")
                     if sftp.exists(server_path) and flag == False:
                         flag = True
                         error = (
@@ -488,6 +491,7 @@ def UrlUpload():
 
                         # close connection
                         sftp.close()
+                        print("Connection closed")
                         data = {"displayImage": BikeWagonUrl, "flag": False}
                         return data, 200
 
