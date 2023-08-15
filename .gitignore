@@ -4,3 +4,4 @@ venv/*
 __pycache__/
 credentials.py
 *.pyc
+requirements2.txt
