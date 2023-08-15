@@ -403,9 +403,7 @@ def UrlUpload():
                 with pysftp.Connection(
                     hostname, username=username, password=password, cnopts=cnopts
                 ) as sftp:
-                    print("Connection succesfully established ...")
                     if sftp.exists(server_path) and flag == False:
-                        print("File already exists")
                         flag = True
                         error = (
                             "Duplicate Image. Would you like to overwrite the image?"
@@ -419,10 +417,11 @@ def UrlUpload():
                         return data
                     else:
                         with sftp.cd("public_html/media/L9/"):
-                            if not sftp.exists(folder_name):
+                            if sftp.exists(folder_name):
+                                pass
+                            else:
                                 # create new directory at public_html/media/L9/ with the folder_name variable
                                 sftp.mkdir(folder_name)
-                                
 
                         image = Image.open(BytesIO(response.content)).convert("RGBA")
 
@@ -432,7 +431,6 @@ def UrlUpload():
 
                         # close connection
                         sftp.close()
-                        print("Connection closed")
 
             except Exception as e:
                 print(e)
@@ -462,7 +460,6 @@ def UrlUpload():
                 with pysftp.Connection(
                     hostname, username=username, password=password, cnopts=cnopts
                 ) as sftp:
-                    print("Connection succesfully established ...")
                     if sftp.exists(server_path) and flag == False:
                         flag = True
                         error = (
@@ -477,10 +474,11 @@ def UrlUpload():
                         return data
                     else:
                         with sftp.cd("public_html/media/L9/"):
-                            if not sftp.exists(folder_name):
+                            if sftp.exists(folder_name):
+                                pass
+                            else:
                                 # create new directory at public_html/media/L9/ with the folder_name variable
                                 sftp.mkdir(folder_name)
-                                
 
                         image = Image.open(imagePath).convert("RGBA")
 
@@ -490,7 +488,6 @@ def UrlUpload():
 
                         # close connection
                         sftp.close()
-                        print("Connection closed")
                         data = {"displayImage": BikeWagonUrl, "flag": False}
                         return data, 200
 
