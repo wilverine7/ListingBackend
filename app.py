@@ -381,6 +381,7 @@ def UrlUpload():
     # creates a variable to pass to the html page to display the image and url
     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
     if validators.url(imagePath):
+        logging.info(f"Image Path: {imagePath}")
         try:
             # open the image from the url
             response = requests.get(imagePath, stream=True)
