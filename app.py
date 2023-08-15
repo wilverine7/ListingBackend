@@ -21,8 +21,13 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(28)
+app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -178,7 +183,7 @@ def ListingUpload():
         # this is the category to attribute set sheet
         # open Attribute Set Attribute sheet and convert it to a DF
         attributeUrl = "https://docs.google.com/spreadsheets/d/1tXm039Fcj16Qn1rWd6HzpyoqQ_l0H64tlmV_0nVDmIk/edit#gid=626682809"
-        sa = gspread.service_account_from_dict(os.getenv("gsheetskey"))
+        sa = gspread.service_account_from_dict(app.config["GSHEETSKEY"])
         sh = sa.open_by_url(attributeUrl)
         ws = sh.worksheet("PrimaryToAttributeSet")
         primaryToAttributeDf = pd.DataFrame(ws.get_all_records())
@@ -390,9 +395,9 @@ def UrlUpload():
 
         else:
             # connect to server
-            hostname = os.getenv("hostname")
-            username = os.getenv("username")
-            password = os.getenv("password")
+            hostname = app.config["HOSTNAME"]
+            username = app.config["USERNAME"]
+            password = app.config["PASSWORD"]
 
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
@@ -449,9 +454,9 @@ def UrlUpload():
 
         else:
             # connect to server
-            hostname = os.getenv("hostname")
-            username = os.getenv("username")
-            password = os.getenv("password")
+            hostname = app.config["HOSTNAME"]
+            username = app.config["USERNAME"]
+            password = app.config["PASSWORD"]
 
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
@@ -538,9 +543,9 @@ def ImageCsvTest():
             # doesn't require the export sheet. You can export the sourcing sheet
             # CaDf = pd.DataFrame(columns=["Inventory Number", "Picture URLs"])
             uniqueParentColor = df["Parent SKU_Color"].unique()
-            hostname = os.getenv("hostname")
-            username = os.getenv("username")
-            password = os.getenv("password")
+            hostname = app.config["HOSTNAME"]
+            username = app.config["USERNAME"]
+            password = app.config["PASSWORD"]
             columns = []
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
@@ -979,9 +984,9 @@ def DeleteImage():
     print(file)
 
     server_path = f"public_html/media{file}"
-    hostname = os.getenv("hostname")
-    username = os.getenv("username")
-    password = os.getenv("password")
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
 
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
@@ -1005,9 +1010,9 @@ def DeleteSingleImage():
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
     server_path = f"public_html/media/L9/{folder_name}/{sku}_{imageNumber}.jpg"
-    hostname = os.getenv("hostname")
-    username = os.getenv("username")
-    password = os.getenv("password")
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
 
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
