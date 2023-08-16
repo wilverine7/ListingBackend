@@ -384,8 +384,6 @@ def UrlUpload():
     # creates a variable to pass to the html page to display the image and url
     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
     if validators.url(imagePath):
-        logger.info(f"Image Path: {imagePath}")
-        logger.warning(f"Image Path: {imagePath}")
         try:
             # open the image from the url
             response = requests.get(imagePath, stream=True)
@@ -413,10 +411,7 @@ def UrlUpload():
             cnopts.hostkeys = None
 
             server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
-            logger.info(f"username: {username}")
-            logger.info(f"password: {password}")
-            logger.info(f"hostname: {hostname}")
-
+            
 
             try:
                 with pysftp.Connection(
@@ -456,7 +451,6 @@ def UrlUpload():
 
             except Exception as e:
                 logger.error(f"Error connecting to server: {e}")
-                logger.warning(f"Error connecting to server: {e}")
                 print(e)
                 error = "Error connecting to server"
                 return error
