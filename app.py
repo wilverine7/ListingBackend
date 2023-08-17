@@ -21,11 +21,26 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
+app.config["HOSTNAME"] = "bikewagonmedia.com"
+app.config["USERNAME"] = "bikewag1"
+app.config["PASSWORD"] = "!!PingPong123"
+app.config["GSHEETSKEY"] ={
+    "type": "service_account",
+    "project_id": "l9-data-warehouse",
+    "private_key_id": "dd597d658b63dd94dcebee91a3b368dfe9ff3001",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCkSQ+Ngz5zKJFG\nzKcktmFLXo/jM91ib0AhP0Eh+KfY8tWaRhlea+kJH5y2LI+r7zRL0E1RzvPTB6lq\nixdbL5lAuEQdbRtnWPrPxpFORfq0G2eUFpztce4CvfVf22pFUUPixonoVhaxHYW9\nBkLqmAbeeBahHWTit3BTrGoU/iBcL5aGPeMnlbFYd5EnC2ipV/qzvTqQVEgc991i\noOI1i4NCg4Rtmit/63i0T1mp10EOcMZXUwpPEmnHaQ+m4yzc5+GNzky/aVRgg8cK\n1Gwlu5AhbL2/6svAN/L2Eg5xKe0wu/RL94mz3YK/CbE3zjGtnBzDmQnU5Wrt/k5q\nqqzk3lOFAgMBAAECggEAGV9FPSRDXVKrGSWbPMLEBPlePIcyjjTDUT8tJnt6JLng\nPlrMKTZ+P4/3ynTYXYPsbjcF8fgF1RYuVouTuFwCDapHrsm+fTgTSEqQ/2c0YGOJ\nHChf5RX+3cKLplnDMGBsHRZvjwfYqlL2aCqS5BtFmE8wo4JgJdmRygJrQcG7qrDZ\nKMn/O+pQyCaMzx3wyI5VXoKa0tTH1KUehqyW5RSfCy34TrdxvAZVCJ37/h3TKHm3\nG9Y0QxbmuAbbGNQuOaVrRkGz92mI3Jm9cYZNUZ0XmGNOcrBHe5D4a8icW9BLotOX\nCcgXd7RAXvWb02wE41O3atOnenschlrHRCzPSIvN8wKBgQDh4ihhD/Q3TwRKnGfv\n2o7X5alGdqzae/CwQ+gqoaCdvw7Ym7eH60IW6YazP4sJ7rzD6VQ8LJAkLBxSrjha\nU2zKNvv0Si71BPx1MCiuKmIUNzce3HRrOardnlVPhpPufgDgb3EemxJWnoDG4/gl\n2HugCIQ5DgUgfAVx1X+s+JKo+wKBgQC6MHEeI0bcUz74pgL3jK4miiR2EX6WzrH8\ncw6fOrJ6YPGKoZHkr1TDiXpD5cs9rgDIiIt0lB6ZJnVRMcvkKGQj2sYzDA+btxKr\nMaVvgDBkCgE+XynJVGwTpEWtQ5MJdQYF9CUpYQLqYtPWdZSbLslvrbzTwgr/U6ax\n/bAndYtNfwKBgCPDMrFrXTcEg6Fsceg/qi30ZoCJeYR96vV9Sty1CkDvZuJUhRI3\n5RbLkk/+13yTF7/MyVFdnNSdRz6v5qwmWSsK2Ykr1ZNlXrMPFOG+RBj/RPLV5Hi1\ngJ/l2YvlurYfrPPbsQUveA/OuITEwxz60VfdAVInLhieih4jtzsjf9TRAoGBAIxG\nsvLh4SFeFrN/X/ziINMogQ/zXkyArdhlVz7gGlfZciHgWOrSriokCdnd56Iw1qY/\nOdI7RlJch0cFHXhodgoNagZLr/bBl28jmGDJU6wLXaSAThtBX6vsuBIyNzWI1WDm\n8JicXnX4v2F0dOH1/g4F954TM/XqME0ptO4FwU5BAoGBALGfl8xPlW/sewPlofTC\nizXzwWuMM+rNf6uypxY9iSNJdsxpug871Qy/0Ju/e7Px/IHf8NaqgpYnoQ7ZvsLm\nXNCIP2beZfn8s/+25Ta3FcKqRZxHvZR76DIgYpMlFE8jk5DRYx8J+IqJP47INl9D\nZJotgQjOd7f3VUttwUDDEphD\n-----END PRIVATE KEY-----\n",
+    "client_email": "google-sheets@l9-data-warehouse.iam.gserviceaccount.com",
+    "client_id": "115894986493326146255",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/google-sheets%40l9-data-warehouse.iam.gserviceaccount.com",
+}
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
 logging.basicConfig(filename='DebugLogs.log', encoding='utf-8', level=logging.DEBUG)
@@ -531,15 +546,16 @@ def ImageCsv():
         df = pd.read_csv(file)
         # if the url doesn't work, keep track of it and remove it from the df
         BrokenUrlDict = {}
+        #need to come up with an error catch for columns 
+        
+        # if not folder:
+        #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
 
-        if not folder:
-            columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
-
-            if all(value in df.columns for value in columnList):
-                print("All values are present in column names.")
-            else:
-                error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
-                return error, status.HTTP_400_BAD_REQUEST
+        #     if all(value in df.columns for value in columnList):
+        #         print("All values are present in column names.")
+        #     else:
+        #         error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
+        #         return error, status.HTTP_400_BAD_REQUEST
         df.dropna(subset=["Image 1"], inplace=True)
         df_copy = df.dropna(axis=1, how="all")
         folder_name = datetime.today().strftime("%Y-%m-%d")
@@ -646,16 +662,16 @@ def ImageCsv():
                                         x += 1
 
                                     else:
-                                        # if folder is an empty list no images were uploaded and there should be full file paths in the cell for the image
-                                        if folder == []:
-                                            imagePath = dfCombo[f"Image {x}"][0]
+                                        #this will be the image name in the folder that is uploaded
+                                        imagePath = dfCombo[f"Image {x}"][0]
 
-                                        # if folder is not an empty list then there should just be a file name
-                                        # in the cell for the image that we will match to an image that is in the uploaded folder
+                                        #if the imagePath contains a . split the string and get everything before the .
+                                        if "." in imagePath:
+                                            fileName = imagePath.split(".")[0]
                                         else:
-                                            fileName = (
-                                                f"{dfCombo[f'Image {x}'][0]}.JPG"
-                                            )
+                                            fileName = imagePath
+
+                                        
                                             for file in folder:
                                                 if (
                                                     file.filename.endswith(".jpg")
@@ -686,6 +702,8 @@ def ImageCsv():
                                                             "/", 1
                                                         )[-1]
                                                     )
+                                                    #remove the file extenstion from the imageName
+                                                    imageName = imageName.split(".")[0]
 
                                                     if imageName == fileName:
                                                         imagePath = file
@@ -765,31 +783,52 @@ def ImageCsv():
                                     x += 1
 
                                 else:
-                                    # if folder is an empty list no images were uploaded and there should be full file paths in the cell for the image
-                                    if folder == []:
-                                        imagePath = dfCombo[f"Image {x}"][0]
+                                    #this will be the image name in the folder that is uploaded
+                                    imagePath = dfCombo[f"Image {x}"][0]
 
-                                    # if folder is not an empty list then there should just be a file name
-                                    # in the cell for the image that we will match to an image that is in the uploaded folder
+                                    #if the imagePath contains a . split the string and get everything before the .
+                                    if "." in imagePath:
+                                        fileName = imagePath.split(".")[0]
                                     else:
-                                        fileName = f"{dfCombo[f'Image {x}'][0]}.JPG"
-                                        for file in folder:
-                                            if (
-                                                file.filename.endswith(".jpg")
-                                                or file.filename.endswith(".png")
-                                                or file.filename.endswith(".jpeg")
-                                                or file.filename.endswith(".webp")
-                                                or file.filename.endswith(".JPG")
-                                                or file.filename.endswith(".JPEG")
-                                                or file.filename.endswith(".PNG")
-                                                or file.filename.endswith(".WEBP")
-                                            ):
-                                                imageName = file.filename.rsplit(
+                                        fileName = imagePath
+
+                                    for file in folder:
+                                        if (
+                                            file.filename.endswith(".jpg")
+                                            or file.filename.endswith(
+                                                ".png"
+                                            )
+                                            or file.filename.endswith(
+                                                ".jpeg"
+                                            )
+                                            or file.filename.endswith(
+                                                ".webp"
+                                            )
+                                            or file.filename.endswith(
+                                                ".JPG"
+                                            )
+                                            or file.filename.endswith(
+                                                ".JPEG"
+                                            )
+                                            or file.filename.endswith(
+                                                ".PNG"
+                                            )
+                                            or file.filename.endswith(
+                                                ".WEBP"
+                                            )
+                                        ):
+                                            imageName = (
+                                                file.filename.rsplit(
                                                     "/", 1
                                                 )[-1]
+                                            )
+                                            #remove the file extenstion from the imageName
+                                            imageName = imageName.split(".")[0]
 
-                                                if imageName == fileName:
-                                                    imagePath = file
+                                            if imageName == fileName:
+                                                imagePath = file
+
+
                                     server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
                                     try:
                                         image = Image.open(imagePath).convert(
@@ -879,9 +918,11 @@ def ImageCsv():
 
         # this will pass the rows as objects
         # return df.to_json(orient="records")
-
-        ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
-        print(BrokenUrlDict)
+        if BrokenUrlDict == {}:
+            ResponseData = {"df": dfJson}
+            
+        else:
+            ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
         return jsonify(ResponseData)
 
 
