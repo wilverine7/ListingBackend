@@ -527,7 +527,7 @@ def ImageCsvTest():
     else:
         logger.debug("POST request hit")
         file = request.files["file"]
-        folder = request.files.getlist("file[]")
+        # folder = request.files.getlist("file[]")
         df = pd.read_csv(file)
         # if the url doesn't work, keep track of it and remove it from the df
         BrokenUrlDict = {}
