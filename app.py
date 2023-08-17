@@ -470,9 +470,7 @@ def UrlUpload():
             hostname = app.config["HOSTNAME"]
             username = app.config["USERNAME"]
             password = app.config["PASSWORD"]
-            # hostname = os.getenv("hostname")
-            # username = os.getenv("username")
-            # password = os.getenv("password")
+            
 
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
@@ -560,9 +558,7 @@ def ImageCsv():
         hostname = app.config["HOSTNAME"]
         username = app.config["USERNAME"]
         password = app.config["PASSWORD"]
-        # hostname = os.getenv("hostname")
-        # username = os.getenv("username")
-        # password = os.getenv("password")
+        
         columns = []
         cnopts = pysftp.CnOpts()
         cnopts.hostkeys = None
@@ -889,7 +885,7 @@ def ImageCsv():
         return jsonify(ResponseData)
 
 
-# used
+# used 
 @app.route("/downloadTest", methods=["POST"])
 def downloadTest():
     downloadWithErrors = request.form["downloadWithErrors"]
@@ -1005,9 +1001,7 @@ def DeleteImage():
     hostname = app.config["HOSTNAME"]
     username = app.config["USERNAME"]
     password = app.config["PASSWORD"]
-    # hostname = os.getenv("hostname")
-    # username = os.getenv("username")
-    # password = os.getenv("password")
+    
 
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
@@ -1034,9 +1028,7 @@ def DeleteSingleImage():
     hostname = app.config["HOSTNAME"]
     username = app.config["USERNAME"]
     password = app.config["PASSWORD"]
-    # hostname = os.getenv("hostname")
-    # username = os.getenv("username")
-    # password = os.getenv("password")
+    
 
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
