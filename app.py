@@ -525,6 +525,7 @@ def ImageCsvTest():
     if request.method == "GET":
         return "Success"
     else:
+        logger.info("POST request hit")
         file = request.files["file"]
         folder = request.files.getlist("file[]")
         df = pd.read_csv(file)
@@ -571,6 +572,7 @@ def ImageCsvTest():
                 password=password,
                 cnopts=cnopts,
             ) as sftp:
+                logger.info("Connected to FTP server")
                 with sftp.cd("public_html/media/L9/"):
                     if sftp.exists(folder_name) == False:
                         # create new directory at public_html/media/L9/ with the folder_name variable
