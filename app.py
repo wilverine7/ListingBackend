@@ -525,9 +525,6 @@ def ImageCsvTest():
     if request.method == "GET":
         return "Success"
     else:
-        # keeps the program running
-        
-        # Do something that takes a long time
         file = request.files["file"]
         folder = request.files.getlist("file[]")
         df = pd.read_csv(file)
