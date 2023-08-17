@@ -21,6 +21,6 @@ pysftp==0.2.9
 rembg==2.0.50
 Requests==2.31.0
 validators==0.21.0
-wakepy==0.7.1
+
 
 
