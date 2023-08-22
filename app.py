@@ -388,7 +388,8 @@ def ListingUpload():
 @cross_origin(supports_credentials=True)
 def UrlUpload():
     if request.form["url"] == "":
-        imagePath = request.files["file"]
+        imageFile = request.files["file"]
+        imagePath = ""
     else:
         imagePath = request.form["url"]
     sku = request.form["sku"]
@@ -400,7 +401,67 @@ def UrlUpload():
     folder_name = datetime.today().strftime("%Y-%m-%d")
     # creates a variable to pass to the html page to display the image and url
     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-    if validators.url(imagePath):
+    if imagePath == "":
+        #handle the file upload
+        if remBg:
+            # code to remove background
+            BikeWagonUrl = fn.removeBackground(imagePath, imageName)
+
+        else:
+            # connect to server
+            hostname = app.config["HOSTNAME"]
+            username = app.config["USERNAME"]
+            password = app.config["PASSWORD"]
+            
+
+            cnopts = pysftp.CnOpts()
+            cnopts.hostkeys = None
+
+            server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+
+            try:
+                with pysftp.Connection(
+                    hostname, username=username, password=password, cnopts=cnopts
+                ) as sftp:
+                    print("Connection succesful")
+                    logger.info("Connection succesful")
+                    if sftp.exists(server_path) and flag == False:
+                        flag = True
+                        error = (
+                            "Duplicate Image. Would you like to overwrite the image?"
+                        )
+                        displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+                        data = {
+                            "error": error,
+                            "flag": flag,
+                            "displayImage": displayImage,
+                        }
+                        return data
+                    else:
+                        with sftp.cd("public_html/media/L9/"):
+                            if sftp.exists(folder_name):
+                                pass
+                            else:
+                                # create new directory at public_html/media/L9/ with the folder_name variable
+                                sftp.mkdir(folder_name)
+
+                        image = Image.open(imagePath).convert("RGBA")
+
+                        image_io = fn.process_image(image)
+
+                        sftp.putfo(image_io, server_path)
+
+                        # close connection
+                        sftp.close()
+                        print("Connection closed")
+                        data = {"displayImage": BikeWagonUrl, "flag": False}
+                        return data, 200
+
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                return "Error", 400
+    else:
+        #handle the url upload
         try:
             # open the image from the url
             response = requests.get(imagePath, stream=True)
@@ -475,64 +536,7 @@ def UrlUpload():
         data = {"displayImage": BikeWagonUrl, "flag": False}
 
         return data, 200
-    else:
-        if remBg:
-            # code to remove background
-            BikeWagonUrl = fn.removeBackground(imagePath, imageName)
-
-        else:
-            # connect to server
-            hostname = app.config["HOSTNAME"]
-            username = app.config["USERNAME"]
-            password = app.config["PASSWORD"]
-            
-
-            cnopts = pysftp.CnOpts()
-            cnopts.hostkeys = None
-
-            server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
-
-            try:
-                with pysftp.Connection(
-                    hostname, username=username, password=password, cnopts=cnopts
-                ) as sftp:
-                    print("Connection succesful")
-                    logger.info("Connection succesful")
-                    if sftp.exists(server_path) and flag == False:
-                        flag = True
-                        error = (
-                            "Duplicate Image. Would you like to overwrite the image?"
-                        )
-                        displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-                        data = {
-                            "error": error,
-                            "flag": flag,
-                            "displayImage": displayImage,
-                        }
-                        return data
-                    else:
-                        with sftp.cd("public_html/media/L9/"):
-                            if sftp.exists(folder_name):
-                                pass
-                            else:
-                                # create new directory at public_html/media/L9/ with the folder_name variable
-                                sftp.mkdir(folder_name)
-
-                        image = Image.open(imagePath).convert("RGBA")
-
-                        image_io = fn.process_image(image)
-
-                        sftp.putfo(image_io, server_path)
-
-                        # close connection
-                        sftp.close()
-                        print("Connection closed")
-                        data = {"displayImage": BikeWagonUrl, "flag": False}
-                        return data, 200
-
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                return "Error", 400
+        
 
 @app.route("/ImageCsv", methods=["GET","POST"])
 @cross_origin(supports_credentials=True)
@@ -610,6 +614,7 @@ def ImageCsv():
                         # Allows there to be unique urls even if the parent sku combo is the same
 
                         if len(uniquePath) > 1:
+                            #this goes by SKU rather than combo so if there are multiple unique urls for a sku it will process them
                             print(uniquePath)
                             for unique in uniquePath:
                                 # reset to the original dfCombo
@@ -622,10 +627,10 @@ def ImageCsv():
                                 print(dfCombo["SKU"][0])
 
                                 print(dfCombo[f"Image {x}"][0])
-                                while dfCombo[f"Image {x}"].count() > 0:
+                                while f"Image {x}" in dfCombo.columns and dfCombo[f"Image {x}"].count() > 0:
                                     # if it is a url
                                     imageUrl = dfCombo[f"Image {x}"][0]
-                                    if validators.url(imageUrl):
+                                    try: 
                                         requests.get(imageUrl, stream=True)
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
 
@@ -661,7 +666,7 @@ def ImageCsv():
 
                                         x += 1
 
-                                    else:
+                                    except:
                                         #this will be the image name in the folder that is uploaded
                                         imagePath = dfCombo[f"Image {x}"][0]
 
@@ -740,13 +745,15 @@ def ImageCsv():
                                             print(BrokenUrlDict)
 
                                         x += 1
+                                                          
                         else:
-                            while dfCombo[f"Image {x}"].count() > 0:
+                            #this process the df using just parent so if all children have the same url it will process them
+                            while f"Image {x}" in dfCombo.columns and dfCombo[f"Image {x}"].count() > 0:
                                 ####### I need to fix x and make sure the variable isn't reused####
 
                                 # if it is a url
                                 imageUrl = dfCombo[f"Image {x}"][0]
-                                if validators.url(imageUrl):
+                                try:
                                     requests.get(imageUrl, stream=True)
                                     server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
 
@@ -782,7 +789,7 @@ def ImageCsv():
 
                                     x += 1
 
-                                else:
+                                except:
                                     #this will be the image name in the folder that is uploaded
                                     imagePath = dfCombo[f"Image {x}"][0]
 
@@ -859,7 +866,7 @@ def ImageCsv():
                                             BrokenUrlDict[combo] += f", Image {x}"
                                         print(BrokenUrlDict)
                                     x += 1
-
+                                
                         df.loc[
                             df["Parent SKU_Color"] == combo, "Picture URLs"
                         ] = urlList
