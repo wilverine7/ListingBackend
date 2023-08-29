@@ -572,10 +572,17 @@ def ImageCsv():
             maxImageColCount += 1
         maxImageColCount -= 1
 
+        if "Parent SKU_Color" in df.columns:
+            uniqueCombo = df["Parent SKU_Color"].unique()
+            columnIdentifier = "Parent SKU_Color"
+        else:
+            uniqueCombo = df["SKU"].unique()
+            columnIdentifier = "SKU"
+
         # allows you to upload a file or url
         # doesn't require the export sheet. You can export the sourcing sheet
         # CaDf = pd.DataFrame(columns=["Inventory Number", "Picture URLs"])
-        uniqueParentColor = df["Parent SKU_Color"].unique()
+        
         hostname = app.config["HOSTNAME"]
         username = app.config["USERNAME"]
         password = app.config["PASSWORD"]
@@ -599,13 +606,13 @@ def ImageCsv():
 
                 try:
                     # getting the uniqueSku problem is you download images multiple times
-                    for combo in uniqueParentColor:
+                    for combo in uniqueCombo:
                         urlList = ""
 
                         # x keeps track of the number of images for each parent SKU color combo
                         x = 1
                         # CaDf.append([{"Inventory Number": sku}])
-                        dfCombo = df[df["Parent SKU_Color"] == combo]
+                        dfCombo = df[df[columnIdentifier] == combo]
                         # if a parent_color combo has more than one unique URL in the comboDf we need to handle it differently
                         uniquePath = dfCombo[f"Image {x}"].unique()
                         # dfCombo.dropna(axis=1, inplace=True)
@@ -619,7 +626,7 @@ def ImageCsv():
                             print(uniquePath)
                             for unique in uniquePath:
                                 # reset to the original dfCombo
-                                dfCombo = df[df["Parent SKU_Color"] == combo]
+                                dfCombo = df[df[columnIdentifier] == combo]
                                 x = 1
                                 # get each line with unique URLS
                                 dfCombo = dfCombo[dfCombo[f"Image {x}"] == unique]
@@ -724,7 +731,7 @@ def ImageCsv():
                                             sftp.putfo(image_io, server_path)
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
                                             df.loc[
-                                                df["Parent SKU_Color"] == sku,
+                                                df[columnIdentifier] == sku,
                                                 f"Server Image {x}",
                                             ] = BikeWagonUrl
                                             if f"Server Image {x}" not in columns:
@@ -769,7 +776,7 @@ def ImageCsv():
                                         sftp.putfo(image_io, server_path)
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
                                         df.loc[
-                                            df["Parent SKU_Color"] == combo,
+                                            df[columnIdentifier] == combo,
                                             f"Server Image {x}",
                                         ] = BikeWagonUrl
                                         if f"Server Image {x}" not in columns:
@@ -848,7 +855,7 @@ def ImageCsv():
                                         sftp.putfo(image_io, server_path)
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
                                         df.loc[
-                                            df["Parent SKU_Color"] == combo,
+                                            df[columnIdentifier] == combo,
                                             f"Server Image {x}",
                                         ] = BikeWagonUrl
                                         if f"Server Image {x}" not in columns:
@@ -869,7 +876,7 @@ def ImageCsv():
                                     x += 1
                                 
                         df.loc[
-                            df["Parent SKU_Color"] == combo, "Picture URLs"
+                            df[columnIdentifier] == combo, "Picture URLs"
                         ] = urlList
                 except Exception as e:
                     print(f"Error: {str(e)}")
@@ -937,6 +944,7 @@ def ImageCsv():
             df.set_index("SKU", inplace=True)
             dfJson = df.to_json(orient="index")
         except Exception as e:
+            print(f"Error: {str(e)}")
             error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
             return error, status.HTTP_400_BAD_REQUEST
 
@@ -962,9 +970,7 @@ def downloadTest():
     df = request.form["df"]
     df = pd.read_json(df, orient="index")
     childOnly = request.form["bool"]
-    #if child is turned off turn it back on.
-    df["Attribute2Name"] = "Z-BC_IsVisible"
-    df["Attribute2Value"] = "True"
+    
     print(df)
     if downloadWithErrors == "true":
         df = df.fillna("")
@@ -997,7 +1003,16 @@ def downloadTest():
 
     columns = ["Picture URLs"]
     if "Attribute1Value" in df.columns:
+        df["Attribute2Name"] = "Labels"
+        df["Attribute2Value"] = "BigCommerce"
+        columns.extend(["Attribute1Name", "Attribute1Value","Attribute2Name", "Attribute2Value"])
+    else:
+        df["Attribute1Name"] = "Labels"
+        df["Attribute1Value"] = "BigCommerce"
         columns.extend(["Attribute1Name", "Attribute1Value"])
+       
+        
+
     ChannelAdvisorDf = df[columns]
     ChannelAdvisorDf.rename_axis("Inventory Number", inplace=True)
     csv = ChannelAdvisorDf.to_csv(index=True)
