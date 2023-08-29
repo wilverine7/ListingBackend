@@ -882,12 +882,28 @@ def ImageCsv():
             print(f"Error: {str(e)}")
             return (error, status.HTTP_400_BAD_REQUEST)
 
-        # if folder is empty then we know the sheet has parents
-        if folder == []:
+        # # if folder is empty then we know the sheet has parents
+        # if folder == []:
+        #     columns.extend(
+        #         ["SKU", "Parent SKU", "Parent SKU_Color", "Picture URLs"]
+        #     )
+        # # if folder is not empty then we know the sheet only has children.
+        # else:
+        #     columns.extend(
+        #         [
+        #             "SKU",
+        #             "Picture URLs",
+        #         ]
+        #     )
+        if "Parent SKU" in df.columns:
             columns.extend(
-                ["SKU", "Parent SKU", "Parent SKU_Color", "Picture URLs"]
+                [
+                    "SKU",
+                    "Parent SKU",
+                    "Parent SKU_Color",
+                    "Picture URLs",
+                ]
             )
-        # if folder is not empty then we know the sheet only has children.
         else:
             columns.extend(
                 [
@@ -906,7 +922,11 @@ def ImageCsv():
             x += 1
             columns.extend([f"Image {x}"])
             ServerImageColumns.append(f"Server Image {x}")
-        df = df[columns]
+        try:
+            df = df[columns]
+        except Exception as e:
+            error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum. (case matters)"
+            return error, status.HTTP_400_BAD_REQUEST
 
         # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
         df = df.dropna(subset=ServerImageColumns, how="all")
