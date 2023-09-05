@@ -969,7 +969,7 @@ def downloadTest():
     # gets the df formatted in the input format and converts it to Channel Advisor format
     df = request.form["df"]
     df = pd.read_json(df, orient="index")
-    childOnly = request.form["bool"]
+    folder = request.form["bool"]
     
     print(df)
     if downloadWithErrors == "true":
@@ -983,23 +983,40 @@ def downloadTest():
 
     ###### assign parent the first image ########
     ###### add to download part of app ##########
-    if childOnly == "false":
-        uniqueParent = df["Parent SKU"].unique()
-        for parent in uniqueParent:
-            UrlList = ""
-            parentDf = df.loc[df["Parent SKU"] == parent]
-            uniqueParentColor = parentDf["Parent SKU_Color"].unique()
-            for combo in uniqueParentColor:
-                ComboDf = df.loc[df["Parent SKU_Color"] == combo]
-                url = ComboDf["Server Image 1"].iloc[0]
-                if UrlList == "":
-                    UrlList = url
-                else:
-                    UrlList = UrlList + "," + url
-            df = pd.concat(
-                [df, pd.DataFrame({"Picture URLs": UrlList}, index=[parent])],
-            )
-        print(df)
+    # if childOnly == "false":
+    #     uniqueParent = df["Parent SKU"].unique()
+    #     for parent in uniqueParent:
+    #         UrlList = ""
+    #         parentDf = df.loc[df["Parent SKU"] == parent]
+    #         uniqueParentColor = parentDf["Parent SKU_Color"].unique()
+    #         for combo in uniqueParentColor:
+    #             ComboDf = df.loc[df["Parent SKU_Color"] == combo]
+    #             url = ComboDf["Server Image 1"].iloc[0]
+    #             if UrlList == "":
+    #                 UrlList = url
+    #             else:
+    #                 UrlList = UrlList + "," + url
+    #         df = pd.concat(
+    #             [df, pd.DataFrame({"Picture URLs": UrlList}, index=[parent])],
+    #         )
+    #     print(df)
+
+    uniqueParent = df["Parent SKU"].unique()
+    for parent in uniqueParent:
+        UrlList = ""
+        parentDf = df.loc[df["Parent SKU"] == parent]
+        uniqueParentColor = parentDf["Parent SKU_Color"].unique()
+        for combo in uniqueParentColor:
+            ComboDf = df.loc[df["Parent SKU_Color"] == combo]
+            url = ComboDf["Server Image 1"].iloc[0]
+            if UrlList == "":
+                UrlList = url
+            else:
+                UrlList = UrlList + "," + url
+        df = pd.concat(
+            [df, pd.DataFrame({"Picture URLs": UrlList}, index=[parent])],
+        )
+    print(df)
 
     columns = ["Picture URLs"]
     if "Attribute1Value" in df.columns:
