@@ -48,6 +48,7 @@ def removeBackground(url, imageName):
 
                 try:
                     # remove background from image
+                    app.logger.info(f"{image}")
                     image = rembg.remove(image)
                     app.logger.info("Background removed successfully")
                 except Exception as e:
