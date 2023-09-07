@@ -384,6 +384,7 @@ def ListingUpload():
 @app.route("/UrlUpload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def UrlUpload():
+    app.logger.info("UrlUpload")
     if request.form["url"] == "":
         imageFile = request.files["file"]
         imagePath = ""
