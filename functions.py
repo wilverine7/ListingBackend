@@ -44,6 +44,7 @@ def removeBackground(url, imageName):
                 response = requests.get(image_url, stream=True)
                 # convert the image to a PIL image
                 image = Image.open(BytesIO(response.content))
+                app.logger.info("Image opened successfully")
 
                 try:
                     # remove background from image
