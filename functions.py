@@ -16,7 +16,8 @@ def removeBackground(url, imageName):
         username = app.config["USERNAME"]
         password = app.config["PASSWORD"]
     except Exception as e:
-        print(f"Error: {str(e)}")
+        app.logger.error("Error getting configuration values")
+        app.logger.error(f"Error: {str(e)}")
         error = "There was an error getting the configuration values"
         json_error = {"error": error}
         return json_error
