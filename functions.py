@@ -45,8 +45,15 @@ def removeBackground(url, imageName):
                 # convert the image to a PIL image
                 image = Image.open(BytesIO(response.content))
 
-                # remove background from image
-                image = rembg.remove(image)
+                try:
+                    # remove background from image
+                    image = rembg.remove(image)
+                except Exception as e:
+                    print(f"Error: {str(e)}")
+                    error = "There was an error removing the background"
+                    json_error = {"error": error}
+                    app.logger.error("Error removing background")
+                    return json_error
 
                 # creates a file like object to save the image to
                 image_io = BytesIO()
