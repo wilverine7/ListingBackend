@@ -6,90 +6,95 @@ def removeBackground(url, imageName):
     from io import BytesIO
     from datetime import datetime
     import rembg
-
-    # set up variables to create file names and connect to server
-    image_url = url
-    imageName = imageName
-    # Access configuration values using app.config
-    hostname = app.config["HOSTNAME"]
-    username = app.config["USERNAME"]
-    password = app.config["PASSWORD"]
-
-    folder_name = datetime.today().strftime("%Y-%m-%d")
-    cnopts = pysftp.CnOpts()
-    cnopts.hostkeys = None
-
-    server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
     try:
-        with pysftp.Connection(
-            hostname, username=username, password=password, cnopts=cnopts
-        ) as sftp:
-            with sftp.cd("public_html/media/L9/"):
-                if sftp.exists(folder_name):
-                    pass
-                else:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
-                    sftp.mkdir(folder_name)
-            try:
-                # open the image from the url
-                response = requests.get(image_url, stream=True)
-                # convert the image to a PIL image
-                image = Image.open(BytesIO(response.content))
+        # set up variables to create file names and connect to server
+        image_url = url
+        imageName = imageName
+        # Access configuration values using app.config
+        hostname = app.config["HOSTNAME"]
+        username = app.config["USERNAME"]
+        password = app.config["PASSWORD"]
 
-                # remove background from image
-                image = rembg.remove(image)
+        folder_name = datetime.today().strftime("%Y-%m-%d")
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
 
-                # creates a file like object to save the image to
-                image_io = BytesIO()
-                # saves the image with no background as a png
-                image.save(image_io, format="PNG")
+        server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+        try:
+            with pysftp.Connection(
+                hostname, username=username, password=password, cnopts=cnopts
+            ) as sftp:
+                with sftp.cd("public_html/media/L9/"):
+                    if sftp.exists(folder_name):
+                        pass
+                    else:
+                        # create new directory at public_html/media/L9/ with the folder_name variable
+                        sftp.mkdir(folder_name)
+                try:
+                    # open the image from the url
+                    response = requests.get(image_url, stream=True)
+                    # convert the image to a PIL image
+                    image = Image.open(BytesIO(response.content))
 
-                # open it again with PIL so we can process it
-                image2 = Image.open(image_io)
-                h, w = image2.size
-                if h > w:
-                    imageSize = (h, h)
-                else:
-                    imageSize = (w, w)
+                    # remove background from image
+                    image = rembg.remove(image)
 
-                # Create a new square image with a white background
-                square_image = Image.new("RGBA", (imageSize), (255, 255, 255, 0))
+                    # creates a file like object to save the image to
+                    image_io = BytesIO()
+                    # saves the image with no background as a png
+                    image.save(image_io, format="PNG")
 
-                # Calculate the position to center the original image on the new canvas
-                position = (
-                    (square_image.width - image2.width) // 2,
-                    (square_image.height - image2.height) // 2,
-                )
+                    # open it again with PIL so we can process it
+                    image2 = Image.open(image_io)
+                    h, w = image2.size
+                    if h > w:
+                        imageSize = (h, h)
+                    else:
+                        imageSize = (w, w)
 
-                # Paste the original image into the center of the square image
-                square_image.paste(image2, position, image2)
+                    # Create a new square image with a white background
+                    square_image = Image.new("RGBA", (imageSize), (255, 255, 255, 0))
 
-                # convert the image to RGB
-                square_image = square_image.convert("RGB")
+                    # Calculate the position to center the original image on the new canvas
+                    position = (
+                        (square_image.width - image2.width) // 2,
+                        (square_image.height - image2.height) // 2,
+                    )
 
-                square_image = square_image.resize((1200, 1200))
+                    # Paste the original image into the center of the square image
+                    square_image.paste(image2, position, image2)
 
-                image_io2 = BytesIO()
-                # Save the resized image to a file-like object
-                square_image.save(image_io2, format="JPEG")
+                    # convert the image to RGB
+                    square_image = square_image.convert("RGB")
 
-                # Upload the image to the server
-                image_io2.seek(0)  # Reset the file pointer to the beginning
-                sftp.putfo(image_io2, server_path)
+                    square_image = square_image.resize((1200, 1200))
 
-                # close connection
-                sftp.close()
+                    image_io2 = BytesIO()
+                    # Save the resized image to a file-like object
+                    square_image.save(image_io2, format="JPEG")
 
-                # creates a variable to pass to the html page to display the image and url
-                BikeWagonUrl = (
-                    f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-                )
-                return BikeWagonUrl
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                error = "There was an error processing the image"
-                json_error = {"error": error}
-                return json_error
+                    # Upload the image to the server
+                    image_io2.seek(0)  # Reset the file pointer to the beginning
+                    sftp.putfo(image_io2, server_path)
+
+                    # close connection
+                    sftp.close()
+
+                    # creates a variable to pass to the html page to display the image and url
+                    BikeWagonUrl = (
+                        f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+                    )
+                    return BikeWagonUrl
+                except Exception as e:
+                    print(f"Error: {str(e)}")
+                    error = "There was an error processing the image"
+                    json_error = {"error": error}
+                    return json_error
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            error = "There was an error connecting to the server"
+            json_error = {"error": error}
+            return json_error
     except Exception as e:
         print(f"Error: {str(e)}")
         error = "There was an error connecting to the server"
