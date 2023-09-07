@@ -10,7 +10,6 @@ import functions as fn
 import requests
 import pysftp
 from PIL import Image
-import validators
 from openpyxl.workbook import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from flask_api import status
