@@ -27,9 +27,22 @@ app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
-logging.basicConfig(filename='DebugLogs.log', encoding='utf-8', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# logging.basicConfig(filename='DebugLogs.log', encoding='utf-8', level=logging.DEBUG)
+# logger = logging.getLogger(__name__)
 
+# Set the logging level to DEBUG so that it logs all messages.
+app.logger.setLevel(logging.DEBUG)
+
+# Create a log file and configure the file handler.
+log_handler = logging.FileHandler('app.log')
+log_handler.setLevel(logging.DEBUG)
+
+# Create a formatter to format log messages.
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_handler.setFormatter(formatter)
+
+# Add the file handler to the app's logger.
+app.logger.addHandler(log_handler)
 
 @app.route("/", methods=["GET"])
 def index():
@@ -408,7 +421,7 @@ def UrlUpload():
                     hostname, username=username, password=password, cnopts=cnopts
                 ) as sftp:
                     print("Connection succesful")
-                    logger.info("Connection succesful")
+                    app.logger.info("Connection succesful")
                     if sftp.exists(server_path) and flag == False:
                         flag = True
                         error = (
@@ -444,6 +457,7 @@ def UrlUpload():
             except Exception as e:
                 print(f"Error: {str(e)}")
                 json = {"error": "Error connecting to server"}
+                app.logger.error(f"Error connecting to server: {e}")
                 return json, 400
     else:
         #handle the url upload
@@ -478,7 +492,7 @@ def UrlUpload():
                         hostname, username=username, password=password, cnopts=cnopts
                     ) as sftp:
                         print("Connection succesful")
-                        logger.info("Connection succesful")
+                        app.logger.info("Connection succesful")
                         if sftp.exists(server_path) and flag == False:
                             flag = True
                             error = (
@@ -510,7 +524,7 @@ def UrlUpload():
                             print("Connection closed")
 
                 except Exception as e:
-                    logger.error(f"Error connecting to server: {e}")
+                    app.logger.error(f"Error connecting to server: {e}")
                     print(e)
                     error = "Error connecting to server"
                     json = {"error": error}
@@ -523,6 +537,7 @@ def UrlUpload():
             error = "Invalid URL"
             # if the image wouldn't open then the url is invalid
             json = {"error": error}
+            app.logger.error(f"Invalid URL: {error}")
             return json
         
 
@@ -587,7 +602,7 @@ def ImageCsv():
                 password=password,
                 cnopts=cnopts,
             ) as sftp:
-                logger.info("Connected to FTP server")
+                app.logger.info("Connected to FTP server")
                 with sftp.cd("public_html/media/L9/"):
                     if sftp.exists(folder_name) == False:
                         # create new directory at public_html/media/L9/ with the folder_name variable

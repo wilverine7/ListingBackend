@@ -97,7 +97,7 @@ def removeBackground(url, imageName):
             return json_error
     except Exception as e:
         print(f"Error: {str(e)}")
-        error = "There was an error connecting to the server"
+        error = "There was an error with the request"
         json_error = {"error": error}
         return json_error
 
