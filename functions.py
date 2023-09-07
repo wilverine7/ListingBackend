@@ -49,6 +49,7 @@ def removeBackground(url, imageName):
                 try:
                     # remove background from image
                     image = rembg.remove(image)
+                    app.logger.info("Background removed successfully")
                 except Exception as e:
                     print(f"Error: {str(e)}")
                     error = "There was an error removing the background"
@@ -60,6 +61,7 @@ def removeBackground(url, imageName):
                 image_io = BytesIO()
                 # saves the image with no background as a png
                 image.save(image_io, format="PNG")
+
 
                 # open it again with PIL so we can process it
                 image2 = Image.open(image_io)
@@ -93,15 +95,17 @@ def removeBackground(url, imageName):
                 # Upload the image to the server
                 image_io2.seek(0)  # Reset the file pointer to the beginning
                 sftp.putfo(image_io2, server_path)
+                app.logger.info("Image uploaded successfully")
 
                 # close connection
                 sftp.close()
+                app.logger.info("Connection closed")
 
                 # creates a variable to pass to the html page to display the image and url
                 BikeWagonUrl = (
                     f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
                 )
-                app.logger.info("Background removed successfully")
+                app.logger.info("Image url created successfully")
                 return BikeWagonUrl
             except Exception as e:
                 print(f"Error: {str(e)}")
