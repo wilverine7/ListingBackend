@@ -552,6 +552,8 @@ def ImageCsv():
         # if the url doesn't work, keep track of it and remove it from the df
         BrokenUrlDict = {}
         #need to come up with an error catch for columns 
+        df.columns = map(str.upper, df.columns)
+        df.columns = df.columns.str.replace(' ', '_')
         
         # if not folder:
         #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
@@ -561,20 +563,20 @@ def ImageCsv():
         #     else:
         #         error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
         #         return error, status.HTTP_400_BAD_REQUEST
-        df.dropna(subset=["Image 1"], inplace=True)
+        df.dropna(subset=["IMAGE_1"], inplace=True)
         df_copy = df.dropna(axis=1, how="all")
         folder_name = datetime.today().strftime("%Y-%m-%d")
         # maxPictureCount is used to extend the df columns to the right number of images.
         maxImageColCount = 1
 
         # see how many images columns there are and add one extra to avoid index out of range error
-        while f"Image {maxImageColCount}" in df_copy.columns:
+        while f"IMAGE_{maxImageColCount}" in df_copy.columns:
             maxImageColCount += 1
         maxImageColCount -= 1
 
-        if "Parent SKU_Color" in df.columns:
-            uniqueCombo = df["Parent SKU_Color"].unique()
-            columnIdentifier = "Parent SKU_Color"
+        if "PARENT_SKU_COLOR" in df.columns:
+            uniqueCombo = df["PARENT_SKU_COLOR"].unique()
+            columnIdentifier = "PARENT_SKU_COLOR"
         else:
             uniqueCombo = df["SKU"].unique()
             columnIdentifier = "SKU"
@@ -614,7 +616,7 @@ def ImageCsv():
                         # CaDf.append([{"Inventory Number": sku}])
                         dfCombo = df[df[columnIdentifier] == combo]
                         # if a parent_color combo has more than one unique URL in the comboDf we need to handle it differently
-                        uniquePath = dfCombo[f"Image {x}"].unique()
+                        uniquePath = dfCombo[f"IMAGE_{x}"].unique()
                         # dfCombo.dropna(axis=1, inplace=True)
                         dfCombo.reset_index(drop=True, inplace=True)
                         # print(dfCombo)
@@ -629,15 +631,15 @@ def ImageCsv():
                                 dfCombo = df[df[columnIdentifier] == combo]
                                 x = 1
                                 # get each line with unique URLS
-                                dfCombo = dfCombo[dfCombo[f"Image {x}"] == unique]
+                                dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] == unique]
                                 dfCombo.reset_index(drop=True, inplace=True)
                                 sku = dfCombo["SKU"][0]
                                 print(dfCombo["SKU"][0])
 
-                                print(dfCombo[f"Image {x}"][0])
-                                while f"Image {x}" in dfCombo.columns and dfCombo[f"Image {x}"].count() > 0:
+                                print(dfCombo[f"IMAGE_{x}"][0])
+                                while f"IMAGE_{x}" in dfCombo.columns and dfCombo[f"IMAGE_{x}"].count() > 0:
                                     # if it is a url
-                                    imageUrl = dfCombo[f"Image {x}"][0]
+                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                     try: 
                                         requests.get(imageUrl, stream=True)
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
@@ -652,12 +654,18 @@ def ImageCsv():
                                             image_io = fn.process_image(image)
                                             sftp.putfo(image_io, server_path)
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                            
+                                            #adds a column with the value of the new url to the df
                                             df.loc[
                                                 df["SKU"] == sku,
                                                 f"Server Image {x}",
                                             ] = BikeWagonUrl
+
+                                            #adds the new column name to the list so we can get all the needed columns later
                                             if f"Server Image {x}" not in columns:
                                                 columns.append(f"Server Image {x}")
+
+                                            #adds the url to the urlList variable so we can add it to the csv file for Channal Advisor upload
                                             if urlList == "":
                                                 urlList = BikeWagonUrl
                                             else:
@@ -668,15 +676,15 @@ def ImageCsv():
                                         except Exception as e:
                                             print(f"Error: {str(e)}")
                                             if sku not in BrokenUrlDict:
-                                                BrokenUrlDict[sku] = f"Image {x}"
+                                                BrokenUrlDict[sku] = f"IMAGE_{x}"
                                             else:
-                                                BrokenUrlDict[sku] += f", Image {x}"
+                                                BrokenUrlDict[sku] += f", IMAGE_{x}"
 
                                         x += 1
 
                                     except:
                                         #this will be the image name in the folder that is uploaded
-                                        imagePath = dfCombo[f"Image {x}"][0]
+                                        imagePath = dfCombo[f"IMAGE_{x}"][0]
 
                                         #if the imagePath contains a . split the string and get everything before the .
                                         if "." in imagePath:
@@ -747,20 +755,20 @@ def ImageCsv():
                                             print(imagePath)
                                             print(f"Error: {str(e)}")
                                             if sku not in BrokenUrlDict:
-                                                BrokenUrlDict[sku] = f"Image {x}"
+                                                BrokenUrlDict[sku] = f"IMAGE_{x}"
                                             else:
-                                                BrokenUrlDict[sku] += f", Image {x}"
+                                                BrokenUrlDict[sku] += f", IMAGE_{x}"
                                             print(BrokenUrlDict)
 
                                         x += 1
                                                           
                         else:
                             #this process the df using just parent so if all children have the same url it will process them
-                            while f"Image {x}" in dfCombo.columns and dfCombo[f"Image {x}"].count() > 0:
+                            while f"IMAGE_{x}" in dfCombo.columns and dfCombo[f"IMAGE_{x}"].count() > 0:
                                 ####### I need to fix x and make sure the variable isn't reused####
 
                                 # if it is a url
-                                imageUrl = dfCombo[f"Image {x}"][0]
+                                imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 try:
                                     requests.get(imageUrl, stream=True)
                                     server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
@@ -790,16 +798,16 @@ def ImageCsv():
                                         print(f"Error: {str(e)}")
                                         print(imageUrl)
                                         if combo not in BrokenUrlDict:
-                                            BrokenUrlDict[combo] = f"Image {x}"
+                                            BrokenUrlDict[combo] = f"IMAGE_{x}"
                                         else:
-                                            BrokenUrlDict[combo] += f", Image {x}"
+                                            BrokenUrlDict[combo] += f", IMAGE_{x}"
                                         print(BrokenUrlDict)
 
                                     x += 1
 
                                 except:
                                     #this will be the image name in the folder that is uploaded
-                                    imagePath = dfCombo[f"Image {x}"][0]
+                                    imagePath = dfCombo[f"IMAGE_{x}"][0]
 
                                     #if the imagePath contains a . split the string and get everything before the .
                                     if "." in imagePath:
@@ -869,9 +877,9 @@ def ImageCsv():
                                         print(imagePath)
                                         print(f"Error: {str(e)}")
                                         if combo not in BrokenUrlDict:
-                                            BrokenUrlDict[combo] = f"Image {x}"
+                                            BrokenUrlDict[combo] = f"IMAGE_{x}"
                                         else:
-                                            BrokenUrlDict[combo] += f", Image {x}"
+                                            BrokenUrlDict[combo] += f", IMAGE_{x}"
                                         print(BrokenUrlDict)
                                     x += 1
                                 
@@ -880,7 +888,7 @@ def ImageCsv():
                         ] = urlList
                 except Exception as e:
                     print(f"Error: {str(e)}")
-                    error = f"An error occured uploading {combo}. Please check this Parent SKU_color and try again."
+                    error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
                     return (error, status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
@@ -892,7 +900,7 @@ def ImageCsv():
         # # if folder is empty then we know the sheet has parents
         # if folder == []:
         #     columns.extend(
-        #         ["SKU", "Parent SKU", "Parent SKU_Color", "Picture URLs"]
+        #         ["SKU", "Parent SKU", "PARENT_SKU_COLOR", "Picture URLs"]
         #     )
         # # if folder is not empty then we know the sheet only has children.
         # else:
@@ -906,8 +914,8 @@ def ImageCsv():
             columns.extend(
                 [
                     "SKU",
-                    "Parent SKU",
-                    "Parent SKU_Color",
+                    "PARENT_SKU",
+                    "PARENT_SKU_COLOR",
                     "Picture URLs",
                 ]
             )
@@ -919,15 +927,17 @@ def ImageCsv():
                 ]
             )
         # if there is a video column and it is not empty add video to the df we will return
-        if "Video" in df.columns and df["Video"].count() > 0:
+        if "VIDEO" in df.columns and df["VIDEO"].count() > 0:
             df["Attribute1Name"] = "VideoProduct"
-            columns.extend(["Video", "Attribute1Name"])
-        columns.extend(["Title"])
+            df.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
+            columns.extend(["Attribute1Value", "Attribute1Name"])
+
+        columns.extend(["TITLE"])
         ServerImageColumns = []
         x = 0
         while x < maxImageColCount:
             x += 1
-            columns.extend([f"Image {x}"])
+            columns.extend([f"IMAGE_{x}"])
             ServerImageColumns.append(f"Server Image {x}")
         try:
             df = df[columns]
@@ -937,9 +947,8 @@ def ImageCsv():
 
         # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
         df = df.dropna(subset=ServerImageColumns, how="all")
-        if "Video" in df.columns:
-            df.rename(columns={"Video": "Attribute1Value"}, inplace=True)
-        # rename video column to VideoProduct
+        
+        
         try:
             df.set_index("SKU", inplace=True)
             dfJson = df.to_json(orient="index")
