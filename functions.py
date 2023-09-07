@@ -1,5 +1,5 @@
 def removeBackground(url, imageName):
-    import os
+    from app import app  
     import pysftp
     import requests
     from PIL import Image
@@ -10,9 +10,10 @@ def removeBackground(url, imageName):
     # set up variables to create file names and connect to server
     image_url = url
     imageName = imageName
-    hostname = os.environ["FLASK_HOSTNAME"]
-    username = os.environ["FLASK_USERNAME"]
-    password = os.environ["FLASK_PASSWORD"]
+    # Access configuration values using app.config
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
 
     folder_name = datetime.today().strftime("%Y-%m-%d")
     cnopts = pysftp.CnOpts()
