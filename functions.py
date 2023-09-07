@@ -31,6 +31,7 @@ def removeBackground(url, imageName):
         with pysftp.Connection(
             hostname, username=username, password=password, cnopts=cnopts
         ) as sftp:
+            app.logger.info("Connected to server")
             with sftp.cd("public_html/media/L9/"):
                 if sftp.exists(folder_name):
                     pass
