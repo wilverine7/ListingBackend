@@ -10,8 +10,6 @@ def removeBackground(url, imageName):
     # set up variables to create file names and connect to server
     image_url = url
     imageName = imageName
-    
-
     hostname = os.environ["FLASK_HOSTNAME"]
     username = os.environ["FLASK_USERNAME"]
     password = os.environ["FLASK_PASSWORD"]
@@ -88,8 +86,12 @@ def removeBackground(url, imageName):
                 return BikeWagonUrl
             except Exception as e:
                 print(f"Error: {str(e)}")
+                error = "There was an error processing the image"
+                return error
     except Exception as e:
         print(f"Error: {str(e)}")
+        error = "There was an error connecting to the server"
+        return error
 
 def process_image(image):
     from PIL import Image
