@@ -40,6 +40,7 @@ def removeBackground(url, imageName):
                     sftp.mkdir(folder_name)
             try:
                 # open the image from the url
+                app.logger.info(f"Opening image from url: {image_url}")
                 response = requests.get(image_url, stream=True)
                 # convert the image to a PIL image
                 image = Image.open(BytesIO(response.content))
