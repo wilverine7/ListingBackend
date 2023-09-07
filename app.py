@@ -910,7 +910,7 @@ def ImageCsv():
         #             "Picture URLs",
         #         ]
         #     )
-        if "Parent SKU" in df.columns:
+        if "PARENT_SKU" in df.columns:
             columns.extend(
                 [
                     "SKU",
@@ -988,7 +988,7 @@ def downloadTest():
         errorDict = json.loads(errorDict)
         if errorDict != {}:
             for key in errorDict:
-                df = df[df["Parent SKU_Color"] != key]
+                df = df[df["PARENT_SKU_COLOR"] != key]
 
     ###### assign parent the first image ########
     ###### add to download part of app ##########
@@ -1010,13 +1010,13 @@ def downloadTest():
     #         )
     #     print(df)
 
-    uniqueParent = df["Parent SKU"].unique()
+    uniqueParent = df["PARENT_SKU"].unique()
     for parent in uniqueParent:
         UrlList = ""
-        parentDf = df.loc[df["Parent SKU"] == parent]
-        uniqueParentColor = parentDf["Parent SKU_Color"].unique()
+        parentDf = df.loc[df["PARENT_SKU"] == parent]
+        uniqueParentColor = parentDf["PARENT_SKU_COLOR"].unique()
         for combo in uniqueParentColor:
-            ComboDf = df.loc[df["Parent SKU_Color"] == combo]
+            ComboDf = df.loc[df["PARENT_SKU_COLOR"] == combo]
             url = ComboDf["Server Image 1"].iloc[0]
             if UrlList == "":
                 UrlList = url
