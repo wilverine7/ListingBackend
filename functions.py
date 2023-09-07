@@ -6,6 +6,7 @@ def removeBackground(url, imageName):
     from io import BytesIO
     from datetime import datetime
     import rembg
+    app.logger.info("Removing background from image")
     try:
         # set up variables to create file names and connect to server
         image_url = url
@@ -84,20 +85,23 @@ def removeBackground(url, imageName):
                     BikeWagonUrl = (
                         f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
                     )
+                    app.logger.info("Background removed successfully")
                     return BikeWagonUrl
                 except Exception as e:
                     print(f"Error: {str(e)}")
                     error = "There was an error processing the image"
                     json_error = {"error": error}
+                    app.logger.error("Error processing image")
                     return json_error
         except Exception as e:
             print(f"Error: {str(e)}")
-            error = "There was an error connecting to the server"
+            error = "There was an error connecting to the server in remove background"
             json_error = {"error": error}
+            app.logger.error("Error connecting to server in remove background")
             return json_error
     except Exception as e:
         print(f"Error: {str(e)}")
-        error = "There was an error with the request"
+        error = "There was an error with the request remove background"
         json_error = {"error": error}
         return json_error
 
