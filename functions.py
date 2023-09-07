@@ -87,11 +87,13 @@ def removeBackground(url, imageName):
             except Exception as e:
                 print(f"Error: {str(e)}")
                 error = "There was an error processing the image"
-                return error
+                json_error = {"error": error}
+                return json_error
     except Exception as e:
         print(f"Error: {str(e)}")
         error = "There was an error connecting to the server"
-        return error
+        json_error = {"error": error}
+        return json_error
 
 def process_image(image):
     from PIL import Image

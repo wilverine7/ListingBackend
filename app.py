@@ -443,7 +443,8 @@ def UrlUpload():
 
             except Exception as e:
                 print(f"Error: {str(e)}")
-                return "Error", 400
+                json = {"error": "Error connecting to server"}
+                return json, 400
     else:
         #handle the url upload
         try:
@@ -512,7 +513,8 @@ def UrlUpload():
                     logger.error(f"Error connecting to server: {e}")
                     print(e)
                     error = "Error connecting to server"
-                    return error
+                    json = {"error": error}
+                    return json
 
             data = {"displayImage": BikeWagonUrl, "flag": False}
 
@@ -520,7 +522,8 @@ def UrlUpload():
         except:
             error = "Invalid URL"
             # if the image wouldn't open then the url is invalid
-            return error
+            json = {"error": error}
+            return json
         
 
 @app.route("/ImageCsv", methods=["GET","POST"])
