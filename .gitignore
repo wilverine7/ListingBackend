@@ -6,3 +6,4 @@ credentials.py
 *.pyc
 requirements2.txt
 DebugLogs.log
+app.log

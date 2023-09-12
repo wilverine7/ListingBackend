@@ -20,10 +20,16 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+
+import credentials
+app.config["HOSTNAME"] = credentials.hostname
+app.config["USERNAME"] = credentials.username
+app.config["PASSWORD"] = credentials.password
+app.config["GSHEETSKEY"] = credentials.gsheetskey
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -676,6 +682,7 @@ def ImageCsv():
                                                 )
 
                                         except Exception as e:
+                                            
                                             print(f"Error: {str(e)}")
                                             if sku not in BrokenUrlDict:
                                                 BrokenUrlDict[sku] = f"IMAGE_{x}"
@@ -889,11 +896,13 @@ def ImageCsv():
                             df[columnIdentifier] == combo, "Picture URLs"
                         ] = urlList
                 except Exception as e:
+                    app.logger.error(f"ERROR: {e}")
                     print(f"Error: {str(e)}")
                     error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
                     return (error, status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            app.logger.error(f"ERROR: {e}")
             error = f"An error occured connecting to the FTP server. Contact IT"
             print(combo)
             print(f"Error: {str(e)}")
@@ -944,6 +953,7 @@ def ImageCsv():
         try:
             df = df[columns]
         except Exception as e:
+            app.logger.error(f"ERROR: {e}")
             error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum. (case matters)"
             return error, status.HTTP_400_BAD_REQUEST
 
@@ -955,6 +965,7 @@ def ImageCsv():
             df.set_index("SKU", inplace=True)
             dfJson = df.to_json(orient="index")
         except Exception as e:
+            app.logger.error(f"ERROR: {e}")
             print(f"Error: {str(e)}")
             error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
             return error, status.HTTP_400_BAD_REQUEST
@@ -1128,6 +1139,7 @@ def DeleteImage():
             sftp.remove(server_path)
             sftp.close()
     except Exception as e:
+        app.logger.error(f"ERROR: {e}")
         print(f"Error: {str(e)}")
     dfJson = df.to_json(orient="index")
     return jsonify(dfJson)
@@ -1155,6 +1167,7 @@ def DeleteSingleImage():
             sftp.remove(server_path)
             sftp.close()
     except Exception as e:
+        app.logger.error(f"Error: {e}")
         print(f"Error: {str(e)}")
     
     return "success"
