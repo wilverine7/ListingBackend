@@ -561,7 +561,9 @@ def ImageCsv():
         BrokenUrlDict = {}
         #need to come up with an error catch for columns 
         df.columns = map(str.upper, df.columns)
+        df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(' ', '_')
+
         
         # if not folder:
         #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
@@ -1042,16 +1044,11 @@ def downloadTest():
 
     columns = ["Picture URLs"]
     if "Attribute1Value" in df.columns:
-        df["Attribute2Name"] = "Labels"
-        df["Attribute2Value"] = "BigCommerce"
-        columns.extend(["Attribute1Name", "Attribute1Value","Attribute2Name", "Attribute2Value"])
-    else:
-        df["Attribute1Name"] = "Labels"
-        df["Attribute1Value"] = "BigCommerce"
         columns.extend(["Attribute1Name", "Attribute1Value"])
+    
        
         
-
+    df["Labels"] = "BigCommerce"
     ChannelAdvisorDf = df[columns]
     ChannelAdvisorDf.rename_axis("Inventory Number", inplace=True)
     csv = ChannelAdvisorDf.to_csv(index=True)
