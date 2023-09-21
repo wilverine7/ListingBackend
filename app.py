@@ -553,6 +553,7 @@ def ImageCsv():
     if request.method == "GET":
         return "ImageCsv"
     else:
+        app.logger.info("ImageCsv - POST")
         
         file = request.files["file"]
         folder = request.files.getlist("file[]")
