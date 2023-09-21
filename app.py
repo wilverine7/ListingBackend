@@ -782,14 +782,13 @@ def ImageCsv():
 
                                 # if it is a url
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                                try:
-                                    requests.get(imageUrl, stream=True)
-                                    server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
-
-                                    try:
-                                        response = requests.get(
+                                response = requests.get(
                                             imageUrl, stream=True
-                                        )
+                                        )       
+                                server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                if response.status_code == 200:
+                                    try:
+                                        
                                         image = Image.open(
                                             BytesIO(response.content)
                                         ).convert("RGBA")
@@ -819,7 +818,7 @@ def ImageCsv():
 
                                     x += 1
 
-                                except:
+                                else:
                                     #this will be the image name in the folder that is uploaded
                                     imagePath = dfCombo[f"IMAGE_{x}"][0]
                                     imagePath.strip()
