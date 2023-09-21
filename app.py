@@ -593,7 +593,6 @@ def ImageCsv():
 
         # allows you to upload a file or url
         # doesn't require the export sheet. You can export the sourcing sheet
-        # CaDf = pd.DataFrame(columns=["Inventory Number", "Picture URLs"])
         
         hostname = app.config["HOSTNAME"]
         username = app.config["USERNAME"]
@@ -615,6 +614,7 @@ def ImageCsv():
                     if sftp.exists(folder_name) == False:
                         # create new directory at public_html/media/L9/ with the folder_name variable
                         sftp.mkdir(folder_name)
+                        app.logger.info("Created new folder")
 
                 try:
                     # getting the uniqueSku problem is you download images multiple times
@@ -684,7 +684,7 @@ def ImageCsv():
                                                 )
 
                                         except Exception as e:
-                                            
+                                            app.logger.error(f"Error: {str(e)}")
                                             print(f"Error: {str(e)}")
                                             if sku not in BrokenUrlDict:
                                                 BrokenUrlDict[sku] = f"IMAGE_{x}"
@@ -763,6 +763,8 @@ def ImageCsv():
                                                 )
 
                                         except Exception as e:
+                                            app.logger.error(f"Error: {str(e)}")
+                                            app.logger.error(imagePath)
                                             print(imagePath)
                                             print(f"Error: {str(e)}")
                                             if sku not in BrokenUrlDict:
@@ -806,6 +808,7 @@ def ImageCsv():
                                             urlList = urlList + "," + BikeWagonUrl
 
                                     except Exception as e:
+                                        app.logger.error(f"Error: {str(e)}")
                                         print(f"Error: {str(e)}")
                                         print(imageUrl)
                                         if combo not in BrokenUrlDict:
@@ -885,6 +888,8 @@ def ImageCsv():
                                             urlList = urlList + "," + BikeWagonUrl
 
                                     except Exception as e:
+                                        app.logger.error(f"Error: {str(e)}")
+                                        app.logger.error(f"There was an issue with {imagePath}")
                                         print(imagePath)
                                         print(f"Error: {str(e)}")
                                         if combo not in BrokenUrlDict:
@@ -909,20 +914,9 @@ def ImageCsv():
             print(combo)
             print(f"Error: {str(e)}")
             return (error, status.HTTP_400_BAD_REQUEST)
+        
+        app.logger.info("Finished uploading images")
 
-        # # if folder is empty then we know the sheet has parents
-        # if folder == []:
-        #     columns.extend(
-        #         ["SKU", "Parent SKU", "PARENT_SKU_COLOR", "Picture URLs"]
-        #     )
-        # # if folder is not empty then we know the sheet only has children.
-        # else:
-        #     columns.extend(
-        #         [
-        #             "SKU",
-        #             "Picture URLs",
-        #         ]
-        #     )
         if "PARENT_SKU" in df.columns:
             columns.extend(
                 [
