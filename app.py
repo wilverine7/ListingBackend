@@ -1073,48 +1073,48 @@ def DeleteImage():
     for x in range(1, 10):
         if url in df[f"Server Image {x}"].values:
             # get the parent color of the row that matches the url so we can update all items with this parent color
-            parentColor = df.loc[df[f"Server Image {x}"] == url, "Parent SKU_Color"][0]
+            parentColor = df.loc[df[f"Server Image {x}"] == url, "PARENT_SKU_COLOR"][0]
             # clear the urlList from the df
-            df.loc[df["Parent SKU_Color"] == parentColor, "Picture URLs"] = ""
+            df.loc[df["PARENT_SKU_COLOR"] == parentColor, "Picture URLs"] = ""
 
             while f"Server Image {x+1}" in df.columns:
                 # pull the row that has the index which is the sku variable above
                 df.loc[
-                    df["Parent SKU_Color"] == parentColor, f"Server Image {x}"
+                    df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"
                 ] = df.loc[
-                    df["Parent SKU_Color"] == parentColor, f"Server Image {x+1}"
+                    df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x+1}"
                 ][
                     0
                 ]
                 x += 1
 
             else:
-                df.loc[df["Parent SKU_Color"] == parentColor, f"Server Image {x}"] = ""
+                df.loc[df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"] = ""
 
             break
     urlList = ""
     x = 1
-    print(df.loc[df["Parent SKU_Color"] == parentColor, f"Server Image {x}"][0])
+    print(df.loc[df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"][0])
     while (
-        df.loc[df["Parent SKU_Color"] == parentColor, f"Server Image {x}"][0] != ""
-        and df.loc[df["Parent SKU_Color"] == parentColor, f"Server Image {x}"][0]
+        df.loc[df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"][0] != ""
+        and df.loc[df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"][0]
         != None
     ):
-        print(df.loc[df["Parent SKU_Color"] == parentColor, f"Server Image {x}"][0])
+        print(df.loc[df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"][0])
         if urlList == "":
             urlList = df.loc[
-                df["Parent SKU_Color"] == parentColor, f"Server Image {x}"
+                df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"
             ][0]
             x += 1
         else:
             urlList = (
                 urlList
                 + ","
-                + df.loc[df["Parent SKU_Color"] == parentColor, f"Server Image {x}"][0]
+                + df.loc[df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"][0]
             )
             x += 1
     print(urlList)
-    df.loc[df["Parent SKU_Color"] == parentColor, "Picture URLs"] = urlList
+    df.loc[df["PARENT_SKU_COLOR"] == parentColor, "Picture URLs"] = urlList
 
     index_l9 = url.find("/L9")
     file = url[index_l9:]
@@ -1168,6 +1168,121 @@ def DeleteSingleImage():
         print(f"Error: {str(e)}")
     
     return "success"
+
+#new packageBuilder route
+@app.route("/packageBuilder", methods=["POST"])
+def packageBuilder():
+    imageCount = int(request.form["count"])
+    packageType = request.form["type"]
+    sku = request.form["sku"]
+    flag = request.form["flag"]
+    saveAsNew = request.form["saveAsNew"]
+
+    if request.form["mainUrl"] == "":
+        skiBoard = request.files["mainFile"]
+    else:
+        skiBoard = request.form["mainUrl"]
+    
+    if imageCount == 1:
+        packageImage = fn.skiBuilder(skiBoard)
+    elif imageCount == 2:
+        if request.form["bootBindingUrl"] == "":
+            bootBinding = request.files["bootBindingFile"]
+        else:
+            bootBinding = request.form["bootBindingUrl"]
+        
+        if packageType == 'Ski':
+            packageImage = fn.twoItemSkiPackageBuilder(skiBoard, bootBinding)
+        elif packageType == 'Board':
+            packageImage = fn.twoItemBoardPackageBuilder(skiBoard, bootBinding)
+    elif imageCount == 3:
+        if request.form["bootUrl"] == "":
+            boot = request.files["bootFile"]
+        else:
+            boot = request.form["bootUrl"]
+
+        if request.form["bindingUrl"] == "":
+            binding = request.files["bindingFile"]
+        else:
+            binding = request.form["bindingUrl"]
+        if packageType == 'Ski':
+            packageImage = fn.skiPackageBuilder(skiBoard, boot, binding)
+        elif packageType == 'Board':
+            packageImage = fn.boardPackageBuilder(skiBoard, boot, binding)
+
+    image_io = BytesIO()
+    packageImage.convert("RGB").save(image_io, "JPEG")
+
+    # Upload the image to the server
+    image_io.seek(0)  # Reset the file pointer to the beginning
+
+    imageNumber = 1
+    folder_name = datetime.today().strftime("%Y-%m-%d")
+    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+
+    #save packageImage to server
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+    
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
+
+    try:
+        with pysftp.Connection(
+            hostname, username=username, password=password, cnopts=cnopts
+        ) as sftp:
+            
+            #if the path exists and flag is flase then we need to tell the user that this is a duplicate.
+            #if flag is true then the user already knows it is a duplicate and wants to override it
+            if sftp.exists(server_path) and flag == 'false':
+                flag = True
+                error = (
+                    "Duplicate Image. Would you like to overwrite the image?"
+                )
+                displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                data = {
+                    "error": error,
+                    "flag": flag,
+                    "displayImage": displayImage,
+                    "imageNumber": imageNumber
+                }
+                return data
+            #if the path exists and saveAsNew is true the user wants to add a new image and not override the old one 
+            #so we need to find the next available image number for that sku
+            if sftp.exists(server_path) and saveAsNew =="true":
+                while sftp.exists(server_path):
+                    imageNumber+=1
+                    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name):
+                    pass
+                else:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+
+            sftp.putfo(image_io, server_path)
+
+            # close connection
+            sftp.close()
+            print("Connection closed")
+            data = {"displayImage": BikeWagonUrl, "flag": False, "error": False, "imageNumber": imageNumber}
+            return data, 200
+    except Exception as e:
+        print(e)
+
+    return "success"
+                    
+            
+            
+            
+
+
+
 
 if __name__ == "__main__":
     app.run()
