@@ -783,9 +783,14 @@ def ImageCsv():
 
                                 # if it is a url
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                                response = requests.get(
-                                            imageUrl, stream=True
-                                        )       
+                                try:
+                                    response = requests.get(
+                                                imageUrl, stream=True
+                                            )   
+                                except:
+                                    #this is a broken url so we don't get a response on purpose
+                                    response = requests.get("https://bikewagonmedia.com/BrokenUrl", stream=True)
+                                    
                                 server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
                                 if response.status_code == 200:
                                     try:
@@ -822,13 +827,15 @@ def ImageCsv():
                                 else:
                                     #this will be the image name in the folder that is uploaded
                                     imagePath = dfCombo[f"IMAGE_{x}"][0]
-                                    imagePath.strip()
+                                    
 
                                     #if the imagePath contains a . split the string and get everything before the .
                                     if "." in imagePath:
                                         fileName = imagePath.split(".")[0]
+                                        fileName = fileName.strip()
                                     else:
                                         fileName = imagePath
+                                        fileName = fileName.strip()
 
                                     for file in folder:
                                         imageName = (
