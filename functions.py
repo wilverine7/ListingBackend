@@ -166,7 +166,7 @@ def twoItemSkiPackageBuilder(ski, boot):
 
     #find the middle point of the ski image
     skiWidth, skiHeight = ski.size
-    skiThird = skiWidth/3
+    skiThird = skiWidth/2.5
 
     #crop the ski image down the middle
     ski = ski.crop((skiThird, 0, skiWidth, skiHeight))
@@ -258,12 +258,16 @@ def skiPackageBuilder(ski, boot, binding):
     #create a new blank white image 
     package = Image.new('RGB', (1200, 1200), (255, 255, 255))
 
-    #find the middle point of the ski image
+    #find the third point of the ski image
     skiWidth, skiHeight = ski.size
-    skiMiddle = skiWidth/2
+    skiThird = skiWidth/2.5
 
     #crop the ski image down the middle
-    ski = ski.crop((skiMiddle, 0, skiWidth, skiHeight))
+    ski = ski.crop((skiThird, 0, skiWidth, skiHeight))
+    skiWidth, skiHeight = ski.size
+
+    #resize the cropped ski mainting the aspect ratio
+    ski = ski.resize((int(skiWidth * 1200/skiHeight), 1200))
 
     #paste that ski image on the left side of the package image
     package.paste(ski, (0,0))
