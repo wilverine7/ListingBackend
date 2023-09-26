@@ -147,7 +147,7 @@ def process_image(image):
 
     # Save the resized image to a file-like object
     image_io = BytesIO()
-    image_resized.convert("RGB").save(image_io, "JPEG")
+    image_resized.convert("RGB").save(image_io, "webp")
 
     # Upload the image to the server
     image_io.seek(0)  # Reset the file pointer to the beginning

@@ -403,7 +403,7 @@ def UrlUpload():
     imageName = f"{sku}_Img{imgNum}"
     folder_name = datetime.today().strftime("%Y-%m-%d")
     # creates a variable to pass to the html page to display the image and url
-    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.webp"
     if imagePath == "":
         #handle the file upload
         if remBg:
@@ -420,7 +420,7 @@ def UrlUpload():
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
 
-            server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+            server_path = f"public_html/media/L9/{folder_name}/{imageName}.webp"
 
             try:
                 with pysftp.Connection(
@@ -433,7 +433,7 @@ def UrlUpload():
                         error = (
                             "Duplicate Image. Would you like to overwrite the image?"
                         )
-                        displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+                        displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.webp"
                         data = {
                             "error": error,
                             "flag": flag,
@@ -490,7 +490,7 @@ def UrlUpload():
                 cnopts = pysftp.CnOpts()
                 cnopts.hostkeys = None
 
-                server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+                server_path = f"public_html/media/L9/{folder_name}/{imageName}.webp"
                 
 
                 try:
@@ -504,7 +504,7 @@ def UrlUpload():
                             error = (
                                 "Duplicate Image. Would you like to overwrite the image?"
                             )
-                            displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+                            displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.webp"
                             data = {
                                 "error": error,
                                 "flag": flag,
@@ -653,7 +653,7 @@ def ImageCsv():
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                     try: 
                                         requests.get(imageUrl, stream=True)
-                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.webp"
 
                                         try:
                                             response = requests.get(
@@ -664,7 +664,7 @@ def ImageCsv():
                                             ).convert("RGBA")
                                             image_io = fn.process_image(image)
                                             sftp.putfo(image_io, server_path)
-                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.webp"
                                             
                                             #adds a column with the value of the new url to the df
                                             df.loc[
@@ -706,30 +706,7 @@ def ImageCsv():
 
                                         
                                             for file in folder:
-                                                if (
-                                                    file.filename.endswith(".jpg")
-                                                    or file.filename.endswith(
-                                                        ".png"
-                                                    )
-                                                    or file.filename.endswith(
-                                                        ".jpeg"
-                                                    )
-                                                    or file.filename.endswith(
-                                                        ".webp"
-                                                    )
-                                                    or file.filename.endswith(
-                                                        ".JPG"
-                                                    )
-                                                    or file.filename.endswith(
-                                                        ".JPEG"
-                                                    )
-                                                    or file.filename.endswith(
-                                                        ".PNG"
-                                                    )
-                                                    or file.filename.endswith(
-                                                        ".WEBP"
-                                                    )
-                                                ):
+                                                
                                                     imageName = (
                                                         file.filename.rsplit(
                                                             "/", 1
@@ -740,7 +717,7 @@ def ImageCsv():
 
                                                     if imageName == fileName:
                                                         imagePath = file
-                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.webp"
                                         try:
                                             image = Image.open(imagePath).convert(
                                                 "RGBA"
@@ -749,7 +726,7 @@ def ImageCsv():
                                             image_io = fn.process_image(image)
 
                                             sftp.putfo(image_io, server_path)
-                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.webp"
                                             df.loc[
                                                 df[columnIdentifier] == sku,
                                                 f"Server Image {x}",
@@ -791,7 +768,7 @@ def ImageCsv():
                                     #this is a broken url so we don't get a response on purpose
                                     response = requests.get("https://bikewagonmedia.com/BrokenUrl", stream=True)
                                     
-                                server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.webp"
                                 if response.status_code == 200:
                                     try:
                                         
@@ -800,7 +777,7 @@ def ImageCsv():
                                         ).convert("RGBA")
                                         image_io = fn.process_image(image)
                                         sftp.putfo(image_io, server_path)
-                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.webp"
                                         df.loc[
                                             df[columnIdentifier] == combo,
                                             f"Server Image {x}",
@@ -848,7 +825,7 @@ def ImageCsv():
 
                                         if imageName == fileName:
                                             imagePath = file
-                                    server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                    server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.webp"
                                     try:
                                         image = Image.open(imagePath).convert(
                                             "RGBA"
@@ -857,7 +834,7 @@ def ImageCsv():
                                         image_io = fn.process_image(image)
 
                                         sftp.putfo(image_io, server_path)
-                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.webp"
                                         df.loc[
                                             df[columnIdentifier] == combo,
                                             f"Server Image {x}",
@@ -1124,7 +1101,7 @@ def DeleteSingleImage():
     imageNumber = request.form["imageNumber"]
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
-    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.webp"
     hostname = app.config["HOSTNAME"]
     username = app.config["USERNAME"]
     password = app.config["PASSWORD"]
@@ -1194,8 +1171,8 @@ def packageBuilder():
 
     imageNumber = 1
     folder_name = datetime.today().strftime("%Y-%m-%d")
-    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.webp"
+    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.webp"
 
     #save packageImage to server
     hostname = app.config["HOSTNAME"]
@@ -1218,7 +1195,7 @@ def packageBuilder():
                 error = (
                     "Duplicate Image. Would you like to overwrite the image?"
                 )
-                displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.webp"
                 data = {
                     "error": error,
                     "flag": flag,
@@ -1231,8 +1208,8 @@ def packageBuilder():
             if sftp.exists(server_path) and saveAsNew =="true":
                 while sftp.exists(server_path):
                     imageNumber+=1
-                    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.webp"
+                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.webp"
                 
             with sftp.cd("public_html/media/L9/"):
                 if sftp.exists(folder_name):
