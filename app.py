@@ -777,7 +777,7 @@ def ImageCsv():
                                                 )
 
                                         except Exception as e:
-                                            app.logger.warn(f"Error: {str(e)} -- {imagePath}}")
+                                            app.logger.warn(f"Error: {str(e)} -- {imagePath}")
                                             print(imagePath)
                                             print(f"Error: {str(e)}")
                                             if sku not in BrokenUrlDict:
