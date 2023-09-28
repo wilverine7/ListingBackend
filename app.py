@@ -632,6 +632,7 @@ def ImageCsv():
                 try:
                     # getting the uniqueSku problem is you download images multiple times
                     for combo in uniqueCombo:
+                        app.logger.debug(f"Processing combo: {combo}")
                         urlList = ""
 
                         # x keeps track of the number of images for each parent SKU color combo
@@ -776,8 +777,7 @@ def ImageCsv():
                                                 )
 
                                         except Exception as e:
-                                            app.logger.error(f"Error: {str(e)}")
-                                            app.logger.error(imagePath)
+                                            app.logger.warn(f"Error: {str(e)} -- {imagePath}}")
                                             print(imagePath)
                                             print(f"Error: {str(e)}")
                                             if sku not in BrokenUrlDict:
