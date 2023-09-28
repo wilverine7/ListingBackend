@@ -16,6 +16,7 @@ from flask_api import status
 from openpyxl.worksheet.datavalidation import DataValidation
 import gspread
 import logging
+import sys
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
@@ -49,6 +50,17 @@ log_handler.setFormatter(formatter)
 
 # Add the file handler to the app's logger.
 app.logger.addHandler(log_handler)
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    app.logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_exception
+
 
 @app.route("/", methods=["GET"])
 def index():
