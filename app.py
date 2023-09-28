@@ -792,6 +792,7 @@ def ImageCsv():
                                     response = requests.get("https://bikewagonmedia.com/BrokenUrl", stream=True)
                                     
                                 server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                app.logger.info(f"{server_path} -- {response.status_code}")
                                 if response.status_code == 200:
                                     try:
                                         
