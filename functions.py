@@ -313,7 +313,7 @@ def skiBuilder(unbuiltSki):
     skiVerticalMiddle = skiWidth/2
 
     #find 25% of the ski width
-    skiRemoval = skiWidth * .40
+    skiRemoval = skiWidth * .38
 
     singleSki = square_image.crop((skiRemoval, 0, skiVerticalMiddle, skiHeight))
     singleSkiWidth, singleSkiHeight = singleSki.size
