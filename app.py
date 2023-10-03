@@ -17,7 +17,6 @@ from openpyxl.worksheet.datavalidation import DataValidation
 import gspread
 import logging
 import sys
-from gunicorn.errors import WorkerTimeout
 
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -63,13 +62,6 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     app.logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 sys.excepthook = handle_exception
-
-@app.errorhandler(WorkerTimeout)
-def handle_timeout_error(e):
-    json = {"error": "Request timed out. Please try again later.",
-            "status": 504
-            }
-    return jsonify(json), 504
 
 @app.route("/", methods=["GET"])
 def index():
