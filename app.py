@@ -601,6 +601,9 @@ def ImageCsv():
         if "PARENT_SKU_COLOR" in df.columns:
             uniqueCombo = df["PARENT_SKU_COLOR"].unique()
             columnIdentifier = "PARENT_SKU_COLOR"
+            if len(uniqueCombo) == 1:
+                error = "There are no values for the Parent SKU Color column. Please make sure there are values in the column. OR remove the header if you want to use SKU as the identifier."
+                return (error,status.HTTP_400_BAD_REQUEST)
         else:
             uniqueCombo = df["SKU"].unique()
             columnIdentifier = "SKU"
