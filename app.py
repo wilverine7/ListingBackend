@@ -1270,6 +1270,58 @@ def packageBuilder():
 
     return "success"
                     
+@app.route("/filePackageBuilder", methods=["POST"])
+def filePackageBuilder():
+    file = request.files["file"]
+    folder = request.files.getlist("file[]")
+    df = pd.read_csv(file)
+    # if the url doesn't work, keep track of it and remove it from the df
+    BrokenUrlDict = {}
+    
+    df.columns = map(str.upper, df.columns)
+    df.columns = df.columns.str.strip()
+    df.columns = df.columns.str.replace(' ', '_')
+    df.dropna(subset=["MAIN_IMAGE"], inplace=True)
 
+    df = df[df["VARIATION_PARENT_SKU"]!="Parent"]
+    uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
+    
+    folder_name = datetime.today().strftime("%Y-%m-%d")
+
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+    
+    columns = []
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
+
+    try:
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name) == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+                    app.logger.info("Created new folder")
+
+            try:
+                # getting the uniqueSku problem is you download images multiple times
+                for combo in uniqueCombo:
+                    print(combo)
+            except:
+                return "error"
+    except:
+        return "error"
+    
+
+
+    
+    return {"error": "This isn't working yet... Sorry!"}
 if __name__ == "__main__":
     app.run()
