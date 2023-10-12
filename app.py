@@ -1313,15 +1313,16 @@ def filePackageBuilder():
             try:
                 # getting the uniqueSku problem is you download images multiple times
                 for combo in uniqueCombo:
-                    print(combo)
+                    comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
             except:
-                return "error"
+                error = "This isn't working yet... Sorry!"
+                return error, status.HTTP_400_BAD_REQUEST    
     except:
-        return "error"
-    
+        error = "This isn't working yet... Sorry!"
+        return error, status.HTTP_400_BAD_REQUEST    
 
 
-    
-    return {"error": "This isn't working yet... Sorry!"}
+    error = "This isn't working yet... Sorry!"
+    return error, status.HTTP_400_BAD_REQUEST
 if __name__ == "__main__":
     app.run()
