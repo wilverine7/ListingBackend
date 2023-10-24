@@ -1277,14 +1277,20 @@ def filePackageBuilder():
     df = pd.read_csv(file)
     # if the url doesn't work, keep track of it and remove it from the df
     BrokenUrlDict = {}
+    for column in df.columns:
+        print(column)
     
     df.columns = map(str.upper, df.columns)
     df.columns = df.columns.str.strip()
     df.columns = df.columns.str.replace(' ', '_')
-    df.dropna(subset=["MAIN_IMAGE"], inplace=True)
+    df.dropna(subset=["MAIN_IMAGE_URL"], inplace=True)
+    
 
     df = df[df["VARIATION_PARENT_SKU"]!="Parent"]
     uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
+
+    for column in df.columns:
+        print(column)
     
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
@@ -1314,15 +1320,66 @@ def filePackageBuilder():
                 # getting the uniqueSku problem is you download images multiple times
                 for combo in uniqueCombo:
                     comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
-            except:
-                error = "This isn't working yet... Sorry!"
-                return error, status.HTTP_400_BAD_REQUEST    
-    except:
-        error = "This isn't working yet... Sorry!"
-        return error, status.HTTP_400_BAD_REQUEST    
+                    sku = combo
+                    comboDf.reset_index(drop=True, inplace=True)
+                    if comboDf["SKI/BOARD"][0] == "Ski":
+                        packageType = "Ski"
+                    elif comboDf["SKI/BOARD"][0] == "Board":
+                        packageType = "Board"
+
+                    if comboDf["BOOT_IMAGE_URL"].count() > 0 and comboDf["BINDING_IMAGE_URL"].count() > 0:
+                        skiBoard = comboDf["MAIN_IMAGE_URL"][0]
+                        boot = comboDf["BOOT_IMAGE_URL"][0]
+                        binding = comboDf["BINDING_IMAGE_URL"][0]
+                        if packageType == "Ski":
+                            packageImage = fn.skiPackageBuilder(skiBoard, boot, binding)
+                        elif packageType == "Board":
+                            packageImage = fn.boardPackageBuilder(skiBoard, boot, binding)
+
+                    elif comboDf["BOOT_IMAGE_URL"].count() > 0 and comboDf["BINDING_IMAGE_URL"].count() == 0:
+                        skiBoard = comboDf["MAIN_IMAGE_URL"][0]
+                        boot = comboDf["BOOT_IMAGE_URL"][0]
+                        if packageType == "Ski":
+                            packageImage = fn.twoItemSkiPackageBuilder(skiBoard, boot)
+                        elif packageType == "Board":
+                            packageImage = fn.twoItemBoardPackageBuilder(skiBoard, boot)
+                    elif comboDf["BOOT_IMAGE_URL"].count() == 0 and comboDf["BINDING_IMAGE_URL"].count() > 0:
+                        skiBoard = comboDf["MAIN_IMAGE_URL"][0]
+                        binding = comboDf["BINDING_IMAGE_URL"][0]
+                        if packageType == "Ski":
+                            packageImage = fn.twoItemSkiPackageBuilder(skiBoard, binding)
+                        elif packageType == "Board":
+                            packageImage = fn.twoItemBoardPackageBuilder(skiBoard, binding)
+                    
+                    image_io = BytesIO()
+                    packageImage.convert("RGB").save(image_io, "JPEG")
+
+                    # Upload the image to the server
+                    image_io.seek(0)  # Reset the file pointer to the beginning
+
+                    imageNumber = 1
+                    folder_name = datetime.today().strftime("%Y-%m-%d")
+                    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    sftp.putfo(image_io, server_path)
+                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    df.loc[
+                        df["VARIATION_PARENT_SKU"] == combo,
+                        "Server Image 1",
+                        ] = BikeWagonUrl
+ 
+            except Exception as e:
+                error = "Error creating package"
+                print(e)
+                return error, status.HTTP_500_INTERNAL_SERVER_ERROR     
+    except Exception as e:
+        error = "Error connecting to server"
+        print(e)
+        return error, status.HTTP_500_INTERNAL_SERVER_ERROR  
 
 
-    error = "This isn't working yet... Sorry!"
-    return error, status.HTTP_400_BAD_REQUEST
+    df.set_index("INVENTORY_NUMBER", inplace=True)
+    dfJson = df.to_json(orient="index")
+    ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
+    return ResponseData
 if __name__ == "__main__":
     app.run()
