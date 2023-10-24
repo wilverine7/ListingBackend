@@ -1034,7 +1034,7 @@ def downloadTest():
             [df, pd.DataFrame({"Picture URLs": UrlList}, index=[parent])],
         )
     print(df)
-
+    df.dropna(subset=["Picture URLs"], inplace=True)
     columns = ["Picture URLs"]
     if "Attribute1Value" in df.columns:
         columns.extend(["Attribute1Name", "Attribute1Value"])
