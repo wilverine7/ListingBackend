@@ -1378,6 +1378,9 @@ def filePackageBuilder():
     
     df = df.rename(columns={'VARIATION_PARENT_SKU': 'PARENT_SKU_COLOR'})
     df["PARENT_SKU"] = df["PARENT_SKU_COLOR"]
+    df.dropna(subset=["Server Image 1"], inplace=True)
+
+    
 
 
     df.set_index("INVENTORY_NUMBER", inplace=True)
