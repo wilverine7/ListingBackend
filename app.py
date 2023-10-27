@@ -1328,6 +1328,7 @@ def filePackageBuilder():
                         packageType = "Board"
 
                     if comboDf["BOOT_IMAGE_URL"].count() > 0 and comboDf["BINDING_IMAGE_URL"].count() > 0:
+                        total = 3
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         boot = comboDf["BOOT_IMAGE_URL"][0]
                         binding = comboDf["BINDING_IMAGE_URL"][0]
@@ -1337,6 +1338,7 @@ def filePackageBuilder():
                             packageImage = fn.boardPackageBuilder(skiBoard, boot, binding)
 
                     elif comboDf["BOOT_IMAGE_URL"].count() > 0 and comboDf["BINDING_IMAGE_URL"].count() == 0:
+                        total = 2
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         boot = comboDf["BOOT_IMAGE_URL"][0]
                         if packageType == "Ski":
@@ -1344,6 +1346,7 @@ def filePackageBuilder():
                         elif packageType == "Board":
                             packageImage = fn.twoItemBoardPackageBuilder(skiBoard, boot)
                     elif comboDf["BOOT_IMAGE_URL"].count() == 0 and comboDf["BINDING_IMAGE_URL"].count() > 0:
+                        total = 2
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         binding = comboDf["BINDING_IMAGE_URL"][0]
                         if packageType == "Ski":
@@ -1366,6 +1369,104 @@ def filePackageBuilder():
                         df["VARIATION_PARENT_SKU"] == combo,
                         "Server Image 1",
                         ] = BikeWagonUrl
+                    
+                    if skiBoard.startswith("https://bikewagonmedia.com"):
+                        BikeWagonUrl = skiBoard
+                    else:
+                        server_path = f"public_html/media/L9/{folder_name}/{sku}_Img2.jpg"
+                        response = requests.get(
+                            skiBoard, stream=True
+                        )
+                        image = Image.open(
+                            BytesIO(response.content)
+                        ).convert("RGBA")
+                        image_io = fn.process_image(image)
+                        sftp.putfo(image_io, server_path)
+                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img2.jpg"
+
+                    df.loc[
+                        df["VARIATION_PARENT_SKU"] == combo,
+                        "Server Image 2",
+                        ] = BikeWagonUrl
+                    
+                    if total == 3:
+                        if boot.startswith("https://bikewagonmedia.com"):
+                            BikeWagonUrl = boot
+                        else:
+                            server_path = f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            response = requests.get(
+                                boot, stream=True
+                            )
+                            image = Image.open(
+                                BytesIO(response.content)
+                            ).convert("RGBA")
+                            image_io = fn.process_image(image)
+                            sftp.putfo(image_io, server_path)
+                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                        df.loc[
+                            df["VARIATION_PARENT_SKU"] == combo,
+                            "Server Image 3",
+                            ] = BikeWagonUrl
+                        
+                        if binding.startswith("https://bikewagonmedia.com"):
+                            BikeWagonUrl = binding
+                        else:
+                            server_path = f"public_html/media/L9/{folder_name}/{sku}_Img4.jpg"
+                            response = requests.get(
+                                binding, stream=True
+                            )
+                            image = Image.open(
+                                BytesIO(response.content)
+                            ).convert("RGBA")
+                            image_io = fn.process_image(image)
+                            sftp.putfo(image_io, server_path)
+                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img4.jpg"
+                        df.loc[
+                            df["VARIATION_PARENT_SKU"] == combo,
+                            "Server Image 4",
+                            ] = BikeWagonUrl
+                    else:
+                        if boot != "":
+                            if boot.startswith("https://bikewagonmedia.com"):
+                                BikeWagonUrl = boot
+                            else:
+                                server_path = f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                response = requests.get(
+                                    boot, stream=True
+                                )
+                                image = Image.open(
+                                    BytesIO(response.content)
+                                ).convert("RGBA")
+                                image_io = fn.process_image(image)
+                                sftp.putfo(image_io, server_path)
+                                BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            df.loc[
+                            df["VARIATION_PARENT_SKU"] == combo,
+                            "Server Image 3",
+                            ] = BikeWagonUrl
+                        
+                        elif binding != "":
+                            if binding.startswith("https://bikewagonmedia.com"):
+                                BikeWagonUrl = binding
+                            else:
+                                server_path = f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                response = requests.get(
+                                    binding, stream=True
+                                )
+                                image = Image.open(
+                                    BytesIO(response.content)
+                                ).convert("RGBA")
+                                image_io = fn.process_image(image)
+                                sftp.putfo(image_io, server_path)
+                                BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            df.loc[
+                            df["VARIATION_PARENT_SKU"] == combo,
+                            "Server Image 3",
+                            ] = BikeWagonUrl
+
+            
+                    
+                    
  
             except Exception as e:
                 error = "Error creating package"
