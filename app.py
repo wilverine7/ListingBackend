@@ -23,17 +23,16 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(28)
-# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
-import credentials
-
-app.config["HOSTNAME"] = credentials.hostname
-app.config["USERNAME"] = credentials.username
-app.config["PASSWORD"] = credentials.password
-app.config["GSHEETSKEY"] = credentials.gsheetskey
+# import credentials
+# app.config["HOSTNAME"] = credentials.hostname
+# app.config["USERNAME"] = credentials.username
+# app.config["PASSWORD"] = credentials.password
+# app.config["GSHEETSKEY"] = credentials.gsheetskey
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -893,7 +892,7 @@ def ImageCsv():
         return jsonify(ResponseData)
 
 
-# used
+# It is important that the df has the Picture URLs column or else you will just end up with a list of parent skus and the first picture from the child.
 @app.route("/downloadTest", methods=["POST"])
 def downloadTest():
     downloadWithErrors = request.form["downloadWithErrors"]
