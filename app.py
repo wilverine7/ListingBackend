@@ -500,6 +500,7 @@ def ImageCsv():
         return "ImageCsv"
     else:
         app.logger.info("ImageCsv - POST")
+        totalUploaded = 0
 
         file = request.files["file"]
         folder = request.files.getlist("file[]")
@@ -616,6 +617,10 @@ def ImageCsv():
                                             ).convert("RGBA")
                                             image_io = fn.process_image(image)
                                             sftp.putfo(image_io, server_path)
+                                            totalUploaded += 1
+                                            logging.info(
+                                                f"Total images uploaded: {totalUploaded}"
+                                            )
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
 
                                             # adds a column with the value of the new url to the df
@@ -682,6 +687,10 @@ def ImageCsv():
                                             image_io = fn.process_image(image)
 
                                             sftp.putfo(image_io, server_path)
+                                            totalUploaded += 1
+                                            logging.info(
+                                                f"Total images uploaded: {totalUploaded}"
+                                            )
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
                                             df.loc[
                                                 df[columnIdentifier] == sku,
@@ -738,6 +747,10 @@ def ImageCsv():
                                         ).convert("RGBA")
                                         image_io = fn.process_image(image)
                                         sftp.putfo(image_io, server_path)
+                                        totalUploaded += 1
+                                        logging.info(
+                                            f"Total images uploaded: {totalUploaded}"
+                                        )
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
                                         df.loc[
                                             df[columnIdentifier] == combo,
@@ -788,6 +801,10 @@ def ImageCsv():
                                         image_io = fn.process_image(image)
 
                                         sftp.putfo(image_io, server_path)
+                                        totalUploaded += 1
+                                        logging.info(
+                                            f"Total images uploaded: {totalUploaded}"
+                                        )
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
                                         df.loc[
                                             df[columnIdentifier] == combo,
