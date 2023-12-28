@@ -737,9 +737,7 @@ def ImageCsv():
                                     )
 
                                 server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
-                                app.logger.info(
-                                    f"{server_path} -- {response.status_code}"
-                                )
+                                app.logger.info(f"{imageUrl} -- {response.status_code}")
                                 if response.status_code == 200:
                                     try:
                                         image = Image.open(
