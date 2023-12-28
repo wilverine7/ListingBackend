@@ -618,7 +618,7 @@ def ImageCsv():
                                             image_io = fn.process_image(image)
                                             sftp.putfo(image_io, server_path)
                                             totalUploaded += 1
-                                            logging.info(
+                                            app.logger.info(
                                                 f"Total images uploaded: {totalUploaded}"
                                             )
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
@@ -688,7 +688,7 @@ def ImageCsv():
 
                                             sftp.putfo(image_io, server_path)
                                             totalUploaded += 1
-                                            logging.info(
+                                            app.logger.info(
                                                 f"Total images uploaded: {totalUploaded}"
                                             )
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
@@ -748,7 +748,7 @@ def ImageCsv():
                                         image_io = fn.process_image(image)
                                         sftp.putfo(image_io, server_path)
                                         totalUploaded += 1
-                                        logging.info(
+                                        app.logger.info(
                                             f"Total images uploaded: {totalUploaded}"
                                         )
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
@@ -802,7 +802,7 @@ def ImageCsv():
 
                                         sftp.putfo(image_io, server_path)
                                         totalUploaded += 1
-                                        logging.info(
+                                        app.logger.info(
                                             f"Total images uploaded: {totalUploaded}"
                                         )
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
