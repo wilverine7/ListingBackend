@@ -17,22 +17,23 @@ from openpyxl.worksheet.datavalidation import DataValidation
 import gspread
 import logging
 import sys
+import credentials
 
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["SECRET_KEY"] = os.urandom(28)
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
 # import credentials
-# app.config["HOSTNAME"] = credentials.hostname
-# app.config["USERNAME"] = credentials.username
-# app.config["PASSWORD"] = credentials.password
-# app.config["GSHEETSKEY"] = credentials.gsheetskey
+app.config["HOSTNAME"] = credentials.hostname
+app.config["USERNAME"] = credentials.username
+app.config["PASSWORD"] = credentials.password
+app.config["GSHEETSKEY"] = credentials.gsheetskey
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -534,7 +535,7 @@ def ImageCsv():
         if "PARENT_SKU_COLOR" in df.columns:
             uniqueCombo = df["PARENT_SKU_COLOR"].unique()
             columnIdentifier = "PARENT_SKU_COLOR"
-            if len(uniqueCombo) == 1:
+            if len(uniqueCombo) == 1 and uniqueCombo[0] == "":
                 error = "There are no values for the Parent SKU Color column. Please make sure there are values in the column. OR remove the header if you want to use SKU as the identifier."
                 return (error, status.HTTP_400_BAD_REQUEST)
         else:
@@ -576,6 +577,7 @@ def ImageCsv():
                         x = 1
                         # CaDf.append([{"Inventory Number": sku}])
                         dfCombo = df[df[columnIdentifier] == combo]
+
                         # if a parent_color combo has more than one unique URL in the comboDf we need to handle it differently
                         uniquePath = dfCombo[f"IMAGE_{x}"].unique()
                         # dfCombo.dropna(axis=1, inplace=True)
@@ -583,6 +585,10 @@ def ImageCsv():
                         # print(dfCombo)
                         # error catch: Could also change this to process the filtered df by Child sku and not make the user do it manually
                         # Allows there to be unique urls even if the parent sku combo is the same
+
+                        ### ASSUMPTION ####
+                        # if the Image_1 url is the same for all rows of the parent sku combo then it will process them all together.
+                        # if we there is a case where image 1 is the same but image 2 is different that is not handled.
 
                         if len(uniquePath) > 1:
                             # this goes by SKU rather than combo so if there are multiple unique urls for a sku it will process them
@@ -725,8 +731,15 @@ def ImageCsv():
                             ):
                                 ####### I need to fix x and make sure the variable isn't reused####
 
+                                # if the first row doesn't have an image but another row does have an image we need to use that image
+
                                 # if it is a url
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                if imageUrl == "" or pd.isnull(imageUrl):
+                                    dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
+                                    dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
+                                    dfCombo.reset_index(drop=True, inplace=True)
+                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 try:
                                     response = requests.get(imageUrl, stream=True)
                                 except:
