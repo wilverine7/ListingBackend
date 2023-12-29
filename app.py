@@ -17,7 +17,6 @@ from openpyxl.worksheet.datavalidation import DataValidation
 import gspread
 import logging
 import sys
-import credentials
 
 
 pd.options.mode.chained_assignment = None  # default='warn'
