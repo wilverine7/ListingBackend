@@ -916,7 +916,9 @@ def ImageCsv():
 
         else:
             ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
-        return jsonify(ResponseData)
+        converted_data = {str(key): value for key, value in ResponseData.items()}
+
+        return jsonify(converted_data)
 
 
 # It is important that the df has the Picture URLs column or else you will just end up with a list of parent skus and the first picture from the child.
