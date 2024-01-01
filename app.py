@@ -512,8 +512,8 @@ def ImageCsv():
         df.columns = map(str.upper, df.columns)
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(" ", "_")
-
-        df["SKU"] = df["SKU"].astype(str)
+        df["PARENT_SKU_COLOR"] = df["PARENT_SKU_COLOR"].astype(str)
+        print(df.dtypes)
 
         # if not folder:
         #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
