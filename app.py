@@ -29,6 +29,7 @@ app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
 app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
 # import credentials
+
 # app.config["HOSTNAME"] = credentials.hostname
 # app.config["USERNAME"] = credentials.username
 # app.config["PASSWORD"] = credentials.password
@@ -512,6 +513,8 @@ def ImageCsv():
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(" ", "_")
 
+        df["SKU"] = df["SKU"].astype(str)
+
         # if not folder:
         #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
 
@@ -916,9 +919,8 @@ def ImageCsv():
 
         else:
             ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
-        converted_data = {str(key): value for key, value in ResponseData.items()}
 
-        return jsonify(converted_data)
+        return jsonify(ResponseData)
 
 
 # It is important that the df has the Picture URLs column or else you will just end up with a list of parent skus and the first picture from the child.
@@ -961,22 +963,22 @@ def downloadTest():
     #     print(df)
 
     # assigns the first image to the parent SKU
-    uniqueParent = df["PARENT_SKU"].unique()
-    for parent in uniqueParent:
-        UrlList = ""
-        parentDf = df.loc[df["PARENT_SKU"] == parent]
-        uniqueParentColor = parentDf["PARENT_SKU_COLOR"].unique()
-        for combo in uniqueParentColor:
-            ComboDf = df.loc[df["PARENT_SKU_COLOR"] == combo]
-            url = ComboDf["Server Image 1"].iloc[0]
-            if UrlList == "":
-                UrlList = url
-            else:
-                UrlList = UrlList + "," + url
-        df = pd.concat(
-            [df, pd.DataFrame({"Picture URLs": UrlList}, index=[parent])],
-        )
-    print(df)
+    # uniqueParent = df["PARENT_SKU"].unique()
+    # for parent in uniqueParent:
+    #     UrlList = ""
+    #     parentDf = df.loc[df["PARENT_SKU"] == parent]
+    #     uniqueParentColor = parentDf["PARENT_SKU_COLOR"].unique()
+    #     for combo in uniqueParentColor:
+    #         ComboDf = df.loc[df["PARENT_SKU_COLOR"] == combo]
+    #         url = ComboDf["Server Image 1"].iloc[0]
+    #         if UrlList == "":
+    #             UrlList = url
+    #         else:
+    #             UrlList = UrlList + "," + url
+    #     df = pd.concat(
+    #         [df, pd.DataFrame({"Picture URLs": UrlList}, index=[parent])],
+    #     )
+    # print(df)
     df.dropna(subset=["Picture URLs"], inplace=True)
     columns = ["Picture URLs"]
     if "Attribute1Value" in df.columns:
