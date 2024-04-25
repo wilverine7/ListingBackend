@@ -204,9 +204,9 @@ def ListingUpload():
 
                 # territroy restrictions
                 if SalesForceDf["Territory Restrictions"][x] == "3 - No Restrictions":
-                    newDf[
-                        "Territories"
-                    ] = "Argentina;Australia;Chile;Ireland;Japan;New Zealand;UK;United States;Canada"
+                    newDf["Territories"] = (
+                        "Argentina;Australia;Chile;Ireland;Japan;New Zealand;UK;United States;Canada"
+                    )
                 elif SalesForceDf["Territory Restrictions"][x] == "2 - Other":
                     newDf["Territories"] = "United States; Canada"
                 elif SalesForceDf["Territory Restrictions"][x] == "1 - US Only":
@@ -512,7 +512,7 @@ def ImageCsv():
         df.columns = map(str.upper, df.columns)
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(" ", "_")
-        df["PARENT_SKU_COLOR"] = df["PARENT_SKU_COLOR"].astype(str)
+
         print(df.dtypes)
 
         # if not folder:
@@ -535,6 +535,7 @@ def ImageCsv():
         maxImageColCount -= 1
 
         if "PARENT_SKU_COLOR" in df.columns:
+            df["PARENT_SKU_COLOR"] = df["PARENT_SKU_COLOR"].astype(str)
             uniqueCombo = df["PARENT_SKU_COLOR"].unique()
             columnIdentifier = "PARENT_SKU_COLOR"
             if len(uniqueCombo) == 1 and uniqueCombo[0] == "":
@@ -1015,13 +1016,11 @@ def DeleteImage():
 
             while f"Server Image {x+1}" in df.columns:
                 # pull the row that has the index which is the sku variable above
-                df.loc[
-                    df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"
-                ] = df.loc[
-                    df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x+1}"
-                ][
-                    0
-                ]
+                df.loc[df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x}"] = (
+                    df.loc[
+                        df["PARENT_SKU_COLOR"] == parentColor, f"Server Image {x+1}"
+                    ][0]
+                )
                 x += 1
 
             else:
@@ -1445,9 +1444,9 @@ def filePackageBuilder():
 
                             urlList = urlList + "," + BikeWagonUrl
 
-                    df.loc[
-                        df["VARIATION_PARENT_SKU"] == combo, "Picture URLs"
-                    ] = urlList
+                    df.loc[df["VARIATION_PARENT_SKU"] == combo, "Picture URLs"] = (
+                        urlList
+                    )
             except Exception as e:
                 error = "Error creating package"
                 print(e)
