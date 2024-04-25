@@ -882,8 +882,8 @@ def ImageCsv():
             df["Attribute1Name"] = "VideoProduct"
             df.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
             columns.extend(["Attribute1Value", "Attribute1Name"])
-
-        columns.extend(["TITLE"])
+        if "TITLE" in df.columns and df["TITLE"].count() > 0:
+            columns.extend(["TITLE"])
         ServerImageColumns = []
         x = 0
         while x < maxImageColCount:
@@ -937,11 +937,15 @@ def downloadTest():
     if downloadWithErrors == "true":
         df = df.fillna("")
     else:
-        errorDict = request.form["errorDict"]
-        errorDict = json.loads(errorDict)
-        if errorDict != {}:
-            for key in errorDict:
-                df = df[df["PARENT_SKU_COLOR"] != key]
+        try:
+            errorDict = request.form["errorDict"]
+            errorDict = json.loads(errorDict)
+            if errorDict != {}:
+                for key in errorDict:
+                    df = df[df["PARENT_SKU_COLOR"] != key]
+        except:
+            error = "Select the download with errors box and try again."
+            return Response(error, status.HTTP_400_BAD_REQUEST)
 
     ###### assign parent the first image ########
     ###### add to download part of app ##########
