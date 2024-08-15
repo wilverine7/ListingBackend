@@ -22,18 +22,18 @@ import sys
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["SECRET_KEY"] = os.urandom(28)
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 
-# import credentials
+import credentials
 
-# app.config["HOSTNAME"] = credentials.hostname
-# app.config["USERNAME"] = credentials.username
-# app.config["PASSWORD"] = credentials.password
-# app.config["GSHEETSKEY"] = credentials.gsheetskey
+app.config["HOSTNAME"] = credentials.hostname
+app.config["USERNAME"] = credentials.username
+app.config["PASSWORD"] = credentials.password
+app.config["GSHEETSKEY"] = credentials.gsheetskey
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -467,8 +467,12 @@ def UrlUpload():
         else:
             # handle the url upload
             try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                }
                 # open the image from the url
-                response = requests.get(imagePath, stream=True)
+                response = requests.get(imagePath, stream=True, headers=headers)
                 # if the user wants to remove background it processes here.
                 if remBg:
                     image = Image.open(BytesIO(response.content))
@@ -492,6 +496,38 @@ def UrlUpload():
                 json = {"error": error}
                 app.logger.error(f"Invalid URL: {error}")
                 return json
+
+
+@app.route("/CaUpload", methods=["POST"])
+@cross_origin(supports_credentials=True)
+def CaUpload():
+    imageUrl = request.form["url"]
+    sku = request.form["sku"]
+    imageNum = request.form["imageNumber"]
+
+    ca_auth_token = fn.getToken()
+    url = "https://api.channeladvisor.com/v1/Products"
+    params = {"$filter": f"Sku eq '{sku}'", "$select": "ID"}
+    headers = {
+        "Authorization": f"Bearer {ca_auth_token}",
+        "Content-Type": "application/json",
+    }
+    r = requests.get(url=url, headers=headers, params=params)
+    data = r.json()
+    CaId = data["value"][0]["ID"]
+
+    # url = f"https://api.channeladvisor.com/v1/Products({CaId})/Images('ITEMIMAGEURL{imageNum}')"
+    url = f"https://api.channeladvisor.com/v1/Images(ProductID={CaId},PlacementName='ITEMIMAGEURL{imageNum}',ProductID={CaId},PlacementName='ITEMIMAGEURL2')"
+    payload = {"Url": imageUrl}
+    response = requests.put(url, headers=headers, json=payload)
+    print("done")
+    if response.status_code == 204:
+        print("Image updated successfully.")
+    else:
+        print(f"Request failed with status code {response.status_code}")
+        print("Response:", response.text)
+
+    return data, 200
 
 
 @app.route("/ImageCsv", methods=["GET", "POST"])
@@ -618,8 +654,12 @@ def ImageCsv():
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
 
                                         try:
+                                            headers = {
+                                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                            }
                                             response = requests.get(
-                                                imageUrl, stream=True
+                                                imageUrl, stream=True, headers=headers
                                             )
                                             image = Image.open(
                                                 BytesIO(response.content)
@@ -744,7 +784,13 @@ def ImageCsv():
                                     dfCombo.reset_index(drop=True, inplace=True)
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 try:
-                                    response = requests.get(imageUrl, stream=True)
+                                    headers = {
+                                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                        # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                    }
+                                    response = requests.get(
+                                        imageUrl, stream=True, headers=headers
+                                    )
                                 except:
                                     # this is a broken url so we don't get a response on purpose
                                     response = requests.get(
@@ -1352,7 +1398,11 @@ def filePackageBuilder():
                         server_path = (
                             f"public_html/media/L9/{folder_name}/{sku}_Img2.jpg"
                         )
-                        response = requests.get(skiBoard, stream=True)
+                        headers = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                            # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                        }
+                        response = requests.get(skiBoard, stream=True, headers=headers)
                         image = Image.open(BytesIO(response.content)).convert("RGBA")
                         image_io = fn.process_image(image)
                         sftp.putfo(image_io, server_path)
@@ -1372,7 +1422,11 @@ def filePackageBuilder():
                             server_path = (
                                 f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
                             )
-                            response = requests.get(boot, stream=True)
+                            headers = {
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                            }
+                            response = requests.get(boot, stream=True, headers=headers)
                             image = Image.open(BytesIO(response.content)).convert(
                                 "RGBA"
                             )
@@ -1392,7 +1446,13 @@ def filePackageBuilder():
                             server_path = (
                                 f"public_html/media/L9/{folder_name}/{sku}_Img4.jpg"
                             )
-                            response = requests.get(binding, stream=True)
+                            headers = {
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                            }
+                            response = requests.get(
+                                binding, stream=True, headers=headers
+                            )
                             image = Image.open(BytesIO(response.content)).convert(
                                 "RGBA"
                             )
@@ -1413,7 +1473,13 @@ def filePackageBuilder():
                                 server_path = (
                                     f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
                                 )
-                                response = requests.get(boot, stream=True)
+                                headers = {
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                }
+                                response = requests.get(
+                                    boot, stream=True, headers=headers
+                                )
                                 image = Image.open(BytesIO(response.content)).convert(
                                     "RGBA"
                                 )
@@ -1434,7 +1500,13 @@ def filePackageBuilder():
                                 server_path = (
                                     f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
                                 )
-                                response = requests.get(binding, stream=True)
+                                headers = {
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                }
+                                response = requests.get(
+                                    binding, stream=True, headers=headers
+                                )
                                 image = Image.open(BytesIO(response.content)).convert(
                                     "RGBA"
                                 )
