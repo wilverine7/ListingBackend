@@ -504,30 +504,10 @@ def CaUpload():
     imageUrl = request.form["url"]
     sku = request.form["sku"]
     imageNum = request.form["imageNumber"]
+    response = fn.caUpload(sku, imageUrl, imageNum)
+    print(response)
 
-    ca_auth_token = fn.getToken()
-    url = "https://api.channeladvisor.com/v1/Products"
-    params = {"$filter": f"Sku eq '{sku}'", "$select": "ID"}
-    headers = {
-        "Authorization": f"Bearer {ca_auth_token}",
-        "Content-Type": "application/json",
-    }
-    r = requests.get(url=url, headers=headers, params=params)
-    data = r.json()
-    CaId = data["value"][0]["ID"]
-
-    # url = f"https://api.channeladvisor.com/v1/Products({CaId})/Images('ITEMIMAGEURL{imageNum}')"
-    url = f"https://api.channeladvisor.com/v1/Images(ProductID={CaId},PlacementName='ITEMIMAGEURL{imageNum}',ProductID={CaId},PlacementName='ITEMIMAGEURL2')"
-    payload = {"Url": imageUrl}
-    response = requests.put(url, headers=headers, json=payload)
-    print("done")
-    if response.status_code == 204:
-        print("Image updated successfully.")
-    else:
-        print(f"Request failed with status code {response.status_code}")
-        print("Response:", response.text)
-
-    return data, 200
+    return response, 200
 
 
 @app.route("/ImageCsv", methods=["GET", "POST"])
