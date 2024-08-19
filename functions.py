@@ -313,7 +313,6 @@ def pilOpener(image):
 
 def getToken():
     import requests
-    import credentials as cred
     import time
     import os
 
@@ -323,7 +322,7 @@ def getToken():
 
     payload = f"grant_type=refresh_token&refresh_token={os.environ['ca_refresh_token']}"
     headers = {
-        "Authorization": f"Basic {cred.ca_auth_token}",
+        "Authorization": f"Basic {os.environ['ca_auth_token']}",
         "Content-Type": "application/x-www-form-urlencoded",
     }
 
