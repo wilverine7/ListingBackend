@@ -408,7 +408,10 @@ def UrlUpload():
         imageFile = request.files["file"]
         imagePath = ""
     else:
+        sep = "?"
         imagePath = request.form["url"]
+        imagePath = imagePath.split(sep, 1)[0]
+
     sku = request.form["sku"]
     sku.replace(" ", "")
     imgNum = request.form["imageNumber"]
@@ -669,6 +672,8 @@ def ImageCsv():
                                 ):
                                     # if it is a url
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                    sep = "?"
+                                    imageUrl = imageUrl.split(sep, 1)[0]
                                     try:
                                         requests.get(imageUrl, stream=True)
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
