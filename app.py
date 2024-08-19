@@ -675,6 +675,7 @@ def ImageCsv():
                                     sep = "?"
                                     imageUrl = imageUrl.split(sep, 1)[0]
                                     try:
+                                        print(imageUrl)
                                         requests.get(imageUrl, stream=True)
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
 
@@ -802,7 +803,9 @@ def ImageCsv():
                                 # if the first row doesn't have an image but another row does have an image we need to use that image
 
                                 # if it is a url
+                                sep = "?"
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                imageUrl = imageUrl.split(sep, 1)[0]
                                 if imageUrl == "" or pd.isnull(imageUrl):
                                     dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
                                     dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
