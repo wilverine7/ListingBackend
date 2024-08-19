@@ -315,12 +315,13 @@ def getToken():
     import requests
     import credentials as cred
     import time
+    import os
 
     retryCount = 0
 
     url = "https://api.channeladvisor.com/oauth2/token"
 
-    payload = f"grant_type=refresh_token&refresh_token={cred.ca_refresh_token}"
+    payload = f"grant_type=refresh_token&refresh_token={os.environ['ca_refresh_token']}"
     headers = {
         "Authorization": f"Basic {cred.ca_auth_token}",
         "Content-Type": "application/x-www-form-urlencoded",
