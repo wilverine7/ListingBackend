@@ -314,6 +314,9 @@ def pilOpener(image):
 def getToken():
     import requests
     import credentials as cred
+    import time
+
+    retryCount = 0
 
     url = "https://api.channeladvisor.com/oauth2/token"
 
@@ -323,34 +326,65 @@ def getToken():
         "Content-Type": "application/x-www-form-urlencoded",
     }
 
-    response = requests.request("POST", url, headers=headers, data=payload)
-    token = response.json()["access_token"]
-    return token
+    while retryCount < 6:
+        response = requests.request("POST", url, headers=headers, data=payload)
+        if response.status_code == 200:
+            token = response.json()["access_token"]
+            return token
+        elif response.status_code == 429:
+            retryCount += 1
+            time.sleep(15)
+        else:
+            error = f"Request failed with status code {response.status_code}"
+            print("Response:", response.text)
+    return error
 
 
-def caUpload(sku, imageUrl, imageNum):
+def caUpload(sku, imageUrl, imageNum, auth_token):
     import requests
+    import time
 
-    ca_auth_token = getToken()
+    retryCount = 0
+
     url = "https://api.channeladvisor.com/v1/Products"
     params = {"$filter": f"Sku eq '{sku}'", "$select": "ID"}
     headers = {
-        "Authorization": f"Bearer {ca_auth_token}",
+        "Authorization": f"Bearer {auth_token}",
         "Content-Type": "application/json",
     }
-    r = requests.get(url=url, headers=headers, params=params)
-    data = r.json()
-    CaId = data["value"][0]["ID"]
+    while retryCount < 6:
+        r = requests.get(
+            url=url,
+            headers=headers,
+            params=params,
+        )
+        retryCount += 1
+        if r.status_code == 200:
+            data = r.json()
+            CaId = data["value"][0]["ID"]
+            break
+        elif r.status_code == 429:
+            time.sleep(10)
+            print("Waiting")
+        else:
+            error = f"Request failed with status code {r.status_code}"
+            print("Response:", r.text)
 
-    # url = f"https://api.channeladvisor.com/v1/Products({CaId})/Images('ITEMIMAGEURL{imageNum}')"
+    retryCount = 0
     url = f"https://api.channeladvisor.com/v1/Images(ProductID={CaId},PlacementName='ITEMIMAGEURL{imageNum}')"
     payload = {"Url": imageUrl}
-    response = requests.put(url, headers=headers, json=payload)
-    print("done")
-    if response.status_code == 204:
-        print("Image updated successfully.")
-        return "success"
-    else:
-        error = f"Request failed with status code {response.status_code}")
-        print("Response:", response.text)
-        return(error, response.text)
+    while retryCount < 6:
+        response = requests.put(url, headers=headers, json=payload)
+        print(response)
+        if response.status_code == 204:
+            print("Image updated successfully.")
+            return "success"
+        elif response.status_code == 429:
+            # try again in 10 seconds
+            time.sleep(10)
+            error = f"Request failed with status code {response.status_code}"
+            print("Response:", response.text)
+        else:
+            error = f"Request failed with status code {response.status_code}"
+            print("Response:", response.text)
+    return (error, response.text)

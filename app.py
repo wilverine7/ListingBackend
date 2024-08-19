@@ -17,6 +17,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 import gspread
 import logging
 import sys
+import time
 
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -501,12 +502,51 @@ def UrlUpload():
 @app.route("/CaUpload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def CaUpload():
-    imageUrl = request.form["url"]
-    sku = request.form["sku"]
-    imageNum = request.form["imageNumber"]
-    response = fn.caUpload(sku, imageUrl, imageNum)
-    print(response)
+    ca_auth_token = fn.getToken()
+    clientUrl = request.form["clientUrl"]
+    if clientUrl == "urlUpload":
+        imageUrl = request.form["url"]
+        sku = request.form["sku"]
+        imageNum = request.form["imageNumber"]
+        response = fn.caUpload(sku, imageUrl, imageNum, ca_auth_token)
+        print(response)
+    elif clientUrl == "csvUpload":
+        downloadWithErrors = request.form["downloadWithErrors"]
+        # gets the df formatted in the input format and converts it to Channel Advisor format
+        df = request.form["df"]
+        df = pd.read_json(df, orient="index")
+        print(df)
 
+        if downloadWithErrors == "true":
+            df = df.fillna("")
+        else:
+            try:
+                errorDict = request.form["errorDict"]
+                errorDict = json.loads(errorDict)
+                if errorDict != {}:
+                    for key in errorDict:
+                        df = df[df["PARENT_SKU_COLOR"] != key]
+            except:
+                error = "Select the download with errors box and try again."
+                return Response(error, status.HTTP_400_BAD_REQUEST)
+        uploadCount = 0
+        for sku in df.index:
+            x = 1
+            dfSku = df[df.index == sku]
+            dfSku = dfSku.dropna(axis=1, how="all")
+            while f"Server Image {x}" in dfSku.columns:
+                imageUrl = dfSku.loc[sku, f"Server Image {x}"]
+                print(sku, imageUrl, x)
+                if uploadCount >= 750:
+                    # wait 30 seconds
+                    time.sleep(30)
+                    print("waiting")
+                response = fn.caUpload(sku, imageUrl, x, ca_auth_token)
+                if response != "success":
+                    # handle errors
+                    print("error: ", response)
+                uploadCount += 1
+                x += 1
     return response, 200
 
 
