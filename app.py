@@ -552,7 +552,6 @@ def CaUpload():
                 x += 1
     return response, 200
 
-
 @app.route("/ImageCsv", methods=["GET", "POST"])
 @cross_origin(supports_credentials=True)
 def ImageCsv():
