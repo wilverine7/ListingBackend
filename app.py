@@ -17,6 +17,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 import gspread
 import logging
 import sys
+import time
 
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -407,7 +408,10 @@ def UrlUpload():
         imageFile = request.files["file"]
         imagePath = ""
     else:
+        sep = "?"
         imagePath = request.form["url"]
+        imagePath = imagePath.split(sep, 1)[0]
+
     sku = request.form["sku"]
     sku.replace(" ", "")
     imgNum = request.form["imageNumber"]
@@ -501,34 +505,52 @@ def UrlUpload():
 @app.route("/CaUpload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def CaUpload():
-    imageUrl = request.form["url"]
-    sku = request.form["sku"]
-    imageNum = request.form["imageNumber"]
-
     ca_auth_token = fn.getToken()
-    url = "https://api.channeladvisor.com/v1/Products"
-    params = {"$filter": f"Sku eq '{sku}'", "$select": "ID"}
-    headers = {
-        "Authorization": f"Bearer {ca_auth_token}",
-        "Content-Type": "application/json",
-    }
-    r = requests.get(url=url, headers=headers, params=params)
-    data = r.json()
-    CaId = data["value"][0]["ID"]
+    clientUrl = request.form["clientUrl"]
+    if clientUrl == "urlUpload":
+        imageUrl = request.form["url"]
+        sku = request.form["sku"]
+        imageNum = request.form["imageNumber"]
+        response = fn.caUpload(sku, imageUrl, imageNum, ca_auth_token)
+        print(response)
+    elif clientUrl == "csvUpload":
+        downloadWithErrors = request.form["downloadWithErrors"]
+        # gets the df formatted in the input format and converts it to Channel Advisor format
+        df = request.form["df"]
+        df = pd.read_json(df, orient="index")
+        print(df)
 
-    # url = f"https://api.channeladvisor.com/v1/Products({CaId})/Images('ITEMIMAGEURL{imageNum}')"
-    url = f"https://api.channeladvisor.com/v1/Images(ProductID={CaId},PlacementName='ITEMIMAGEURL{imageNum}',ProductID={CaId},PlacementName='ITEMIMAGEURL2')"
-    payload = {"Url": imageUrl}
-    response = requests.put(url, headers=headers, json=payload)
-    print("done")
-    if response.status_code == 204:
-        print("Image updated successfully.")
-    else:
-        print(f"Request failed with status code {response.status_code}")
-        print("Response:", response.text)
-
-    return data, 200
-
+        if downloadWithErrors == "true":
+            df = df.fillna("")
+        else:
+            try:
+                errorDict = request.form["errorDict"]
+                errorDict = json.loads(errorDict)
+                if errorDict != {}:
+                    for key in errorDict:
+                        df = df[df["PARENT_SKU_COLOR"] != key]
+            except:
+                error = "Select the download with errors box and try again."
+                return Response(error, status.HTTP_400_BAD_REQUEST)
+        uploadCount = 0
+        for sku in df.index:
+            x = 1
+            dfSku = df[df.index == sku]
+            dfSku = dfSku.dropna(axis=1, how="all")
+            while f"Server Image {x}" in dfSku.columns:
+                imageUrl = dfSku.loc[sku, f"Server Image {x}"]
+                print(sku, imageUrl, x)
+                if uploadCount >= 750:
+                    # wait 30 seconds
+                    time.sleep(30)
+                    print("waiting")
+                response = fn.caUpload(sku, imageUrl, x, ca_auth_token)
+                if response != "success":
+                    # handle errors
+                    print("error: ", response)
+                uploadCount += 1
+                x += 1
+    return response, 200
 
 @app.route("/ImageCsv", methods=["GET", "POST"])
 @cross_origin(supports_credentials=True)
@@ -649,7 +671,10 @@ def ImageCsv():
                                 ):
                                     # if it is a url
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                    sep = "?"
+                                    imageUrl = imageUrl.split(sep, 1)[0]
                                     try:
+                                        print(imageUrl)
                                         requests.get(imageUrl, stream=True)
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
 
@@ -777,7 +802,9 @@ def ImageCsv():
                                 # if the first row doesn't have an image but another row does have an image we need to use that image
 
                                 # if it is a url
+                                sep = "?"
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                imageUrl = imageUrl.split(sep, 1)[0]
                                 if imageUrl == "" or pd.isnull(imageUrl):
                                     dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
                                     dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
