@@ -23,22 +23,21 @@ import time
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
-# app.config["SECRET_KEY"] = os.urandom(28)
-# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
-# app.config["ca_auth_token"] = os.environ["ca_auth_token"]
-# app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
+app.config["SECRET_KEY"] = os.urandom(28)
+app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+app.config["ca_auth_token"] = os.environ["ca_auth_token"]
+app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
 
-import credentials
-
-app.config["HOSTNAME"] = credentials.hostname
-app.config["USERNAME"] = credentials.username
-app.config["PASSWORD"] = credentials.password
-app.config["GSHEETSKEY"] = credentials.gsheetskey
-app.config["ca_auth_token"] = credentials.ca_auth_token
-app.config["ca_refresh_token"] = credentials.ca_refresh_token
+# import credentials
+# app.config["HOSTNAME"] = credentials.hostname
+# app.config["USERNAME"] = credentials.username
+# app.config["PASSWORD"] = credentials.password
+# app.config["GSHEETSKEY"] = credentials.gsheetskey
+# app.config["ca_auth_token"] = credentials.ca_auth_token
+# app.config["ca_refresh_token"] = credentials.ca_refresh_token
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
