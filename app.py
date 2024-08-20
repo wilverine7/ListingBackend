@@ -23,18 +23,22 @@ import time
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["SECRET_KEY"] = os.urandom(28)
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["ca_auth_token"] = os.environ["ca_auth_token"]
+# app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
 
-# import credentials
+import credentials
 
-# app.config["HOSTNAME"] = credentials.hostname
-# app.config["USERNAME"] = credentials.username
-# app.config["PASSWORD"] = credentials.password
-# app.config["GSHEETSKEY"] = credentials.gsheetskey
+app.config["HOSTNAME"] = credentials.hostname
+app.config["USERNAME"] = credentials.username
+app.config["PASSWORD"] = credentials.password
+app.config["GSHEETSKEY"] = credentials.gsheetskey
+app.config["ca_auth_token"] = credentials.ca_auth_token
+app.config["ca_refresh_token"] = credentials.ca_refresh_token
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -505,20 +509,29 @@ def UrlUpload():
 @app.route("/CaUpload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def CaUpload():
-    app.logger.info(
-        "Auth Token: ",
-        os.environ["ca_auth_token"],
-        "refresh Token: ",
-        os.environ["ca_refresh_token"],
-    )
-    ca_auth_token = fn.getToken()
+    app.logger.info("CaUpload")
+    ca_auth_token = app.config["ca_auth_token"]
+    ca_refresh_token = app.config["ca_refresh_token"]
+    errors = []
+    uploadSuccess = []
+    try:
+        ca_auth_token = fn.getToken(ca_refresh_token, ca_auth_token)
+        if ca_auth_token.startswith("Request failed"):
+            raise Exception
+    except:
+        app.logger.error(ca_auth_token)
+        return ca_auth_token, 500
+
     clientUrl = request.form["clientUrl"]
     if clientUrl == "urlUpload":
         imageUrl = request.form["url"]
         sku = request.form["sku"]
         imageNum = request.form["imageNumber"]
         response = fn.caUpload(sku, imageUrl, imageNum, ca_auth_token)
-        print(response)
+        if response == "success":
+            uploadSuccess = sku
+        else:
+            errors = sku
     elif clientUrl == "csvUpload":
         downloadWithErrors = request.form["downloadWithErrors"]
         # gets the df formatted in the input format and converts it to Channel Advisor format
@@ -545,7 +558,6 @@ def CaUpload():
             dfSku = dfSku.dropna(axis=1, how="all")
             while f"Server Image {x}" in dfSku.columns:
                 imageUrl = dfSku.loc[sku, f"Server Image {x}"]
-                print(sku, imageUrl, x)
                 if uploadCount >= 750:
                     # wait 30 seconds
                     time.sleep(30)
@@ -553,10 +565,14 @@ def CaUpload():
                 response = fn.caUpload(sku, imageUrl, x, ca_auth_token)
                 if response != "success":
                     # handle errors
-                    print("error: ", response)
+                    errors.append(sku)
+                    app.logger.error(f"unable to upload: {sku}")
+                else:
+                    uploadSuccess.append(sku)
+                    app.logger.info(f"succesfully uploaded: {sku}")
                 uploadCount += 1
                 x += 1
-    return response, 200
+    return jsonify({"errors": errors, "success": uploadSuccess})
 
 
 @app.route("/ImageCsv", methods=["GET", "POST"])

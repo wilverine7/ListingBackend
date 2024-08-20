@@ -311,18 +311,17 @@ def pilOpener(image):
     return pilImage
 
 
-def getToken():
+def getToken(ca_refresh_token, ca_auth_token):
     import requests
     import time
-    import os
 
     retryCount = 0
 
     url = "https://api.channeladvisor.com/oauth2/token"
 
-    payload = f"grant_type=refresh_token&refresh_token={os.environ['ca_refresh_token']}"
+    payload = f"grant_type=refresh_token&refresh_token={ca_refresh_token}"
     headers = {
-        "Authorization": f"Basic {os.environ['ca_auth_token']}",
+        "Authorization": f"Basic {ca_auth_token}",
         "Content-Type": "application/x-www-form-urlencoded",
     }
 
@@ -332,17 +331,18 @@ def getToken():
             token = response.json()["access_token"]
             return token
         elif response.status_code == 429:
-            retryCount += 1
             time.sleep(15)
         else:
             error = f"Request failed with status code {response.status_code}"
-            print("Response:", response.text)
+        retryCount += 1
+
     return error
 
 
 def caUpload(sku, imageUrl, imageNum, auth_token):
     import requests
     import time
+    from __main__ import app
 
     retryCount = 0
 
@@ -362,29 +362,30 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
         if r.status_code == 200:
             data = r.json()
             CaId = data["value"][0]["ID"]
+            error = ""
             break
         elif r.status_code == 429:
             time.sleep(10)
-            print("Waiting")
+            app.logger.info("waiting")
         else:
             error = f"Request failed with status code {r.status_code}"
-            print("Response:", r.text)
+    if error != "":
+        return error
 
     retryCount = 0
     url = f"https://api.channeladvisor.com/v1/Images(ProductID={CaId},PlacementName='ITEMIMAGEURL{imageNum}')"
     payload = {"Url": imageUrl}
     while retryCount < 6:
         response = requests.put(url, headers=headers, json=payload)
-        print(response)
+        retryCount += 1
         if response.status_code == 204:
-            print("Image updated successfully.")
             return "success"
         elif response.status_code == 429:
             # try again in 10 seconds
             time.sleep(10)
+            app.logger.info("429 - Waiting")
             error = f"Request failed with status code {response.status_code}"
-            print("Response:", response.text)
         else:
             error = f"Request failed with status code {response.status_code}"
-            print("Response:", response.text)
+            app.logger.error(response.status_code, response.text)
     return (error, response.text)
