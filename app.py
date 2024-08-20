@@ -516,6 +516,7 @@ def CaUpload():
     ca_refresh_token = app.config["ca_refresh_token"]
     errors = []
     uploadSuccess = []
+    caErrorDict = {}
     try:
         ca_auth_token = fn.getToken(ca_refresh_token, ca_auth_token)
         if ca_auth_token.startswith("Request failed"):
@@ -567,13 +568,14 @@ def CaUpload():
                 response = fn.caUpload(sku, imageUrl, x, ca_auth_token)
                 if response != "success":
                     # handle errors
-                    errors.append(sku)
-                    app.logger.error(f"unable to upload: {sku}")
+                    caErrorDict.update({"SKU": sku, "imgNum": x})
+                    app.logger.error(f"unable to upload: {sku}: image number {x}")
                 else:
                     uploadSuccess.append(sku)
                     app.logger.info(f"succesfully uploaded: {sku}")
                 uploadCount += 1
                 x += 1
+        errors = caErrorDict
     responseJson = {"errors": errors, "success": uploadSuccess}
     return responseJson, 200
 
