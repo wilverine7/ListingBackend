@@ -342,7 +342,7 @@ def getToken(ca_refresh_token, ca_auth_token):
 def caUpload(sku, imageUrl, imageNum, auth_token):
     import requests
     import time
-    from __main__ import app
+    from app import app
 
     retryCount = 0
 

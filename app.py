@@ -23,6 +23,7 @@ import time
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
+
 app.config["SECRET_KEY"] = os.urandom(28)
 app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
 app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
