@@ -376,7 +376,7 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
         return error
 
     retryCount = 0
-    url = f"https://api.channeladvisor.com/v1/Images(ProductID={CaId},PlacementName='ITEMIMAGEURL{imageNum}')x"
+    url = f"https://api.channeladvisor.com/v1/Images(ProductID={CaId},PlacementName='ITEMIMAGEURL{imageNum}')"
     payload = {"Url": imageUrl}
     while retryCount < 6:
         response = requests.put(url, headers=headers, json=payload)
