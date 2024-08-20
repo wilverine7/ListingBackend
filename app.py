@@ -573,7 +573,7 @@ def CaUpload():
                 uploadCount += 1
                 x += 1
     responseJson = {"errors": errors, "success": uploadSuccess}
-    return Response(responseJson, status=200)
+    return responseJson, 200
 
 
 @app.route("/ImageCsv", methods=["GET", "POST"])
