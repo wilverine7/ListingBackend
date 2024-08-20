@@ -572,7 +572,8 @@ def CaUpload():
                     app.logger.info(f"succesfully uploaded: {sku}")
                 uploadCount += 1
                 x += 1
-    return jsonify({"errors": errors, "success": uploadSuccess})
+    responseJson = {"errors": errors, "success": uploadSuccess}
+    return responseJson, 200
 
 
 @app.route("/ImageCsv", methods=["GET", "POST"])
