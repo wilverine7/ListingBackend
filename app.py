@@ -505,6 +505,12 @@ def UrlUpload():
 @app.route("/CaUpload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def CaUpload():
+    app.logger.info(
+        "Auth Token: ",
+        os.environ["ca_auth_token"],
+        "refresh Token: ",
+        os.environ["ca_refresh_token"],
+    )
     ca_auth_token = fn.getToken()
     clientUrl = request.form["clientUrl"]
     if clientUrl == "urlUpload":
@@ -551,6 +557,7 @@ def CaUpload():
                 uploadCount += 1
                 x += 1
     return response, 200
+
 
 @app.route("/ImageCsv", methods=["GET", "POST"])
 @cross_origin(supports_credentials=True)
