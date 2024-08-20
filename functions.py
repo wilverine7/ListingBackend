@@ -342,7 +342,7 @@ def getToken(ca_refresh_token, ca_auth_token):
 def caUpload(sku, imageUrl, imageNum, auth_token):
     import requests
     import time
-    from app import app
+    from app import logger
 
     retryCount = 0
 
@@ -359,14 +359,17 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
             params=params,
         )
         retryCount += 1
-        if r.status_code == 200:
+        try:
             data = r.json()
+        except:
+            data = {"value": []}
+        if r.status_code == 200 and data["value"] != []:
             CaId = data["value"][0]["ID"]
             error = ""
             break
         elif r.status_code == 429:
             time.sleep(10)
-            app.logger.info("waiting")
+            logger.info("waiting")
         else:
             error = f"Request failed with status code {r.status_code}"
     if error != "":
@@ -383,9 +386,9 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
         elif response.status_code == 429:
             # try again in 10 seconds
             time.sleep(10)
-            app.logger.info("429 - Waiting")
+            logger.info("429 - Waiting")
             error = f"Request failed with status code {response.status_code}"
         else:
             error = f"Request failed with status code {response.status_code}"
-            app.logger.error(response.status_code, response.text)
+            logger.error(response.status_code, response.text)
     return (error, response.text)
