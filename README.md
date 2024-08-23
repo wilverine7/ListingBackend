@@ -4,3 +4,4 @@ product SKUs and urls or filenames and all the images are uploaded to the server
 and is linked to the SKU recieved. The user can then download this Dataframe as a CSV and upload it to the product management system and the photos will go 
 live on the website. Additionally there is some spreadsheet manipulation/process automation as well as some image manipulation to automate the 
 process of building product images for packages. This application allowed Level Nine to save ~$50,000 annually. I deployed and maintain this API on a DigitalOcean droplet and it integrates with an internal react app that I also developed.
+![image 1](./images/Screenshot 2024-08-23 at 2.19.17 PM.png?raw=true "Title")
