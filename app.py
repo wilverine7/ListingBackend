@@ -417,6 +417,9 @@ def UrlUpload():
         sep = "?"
         imagePath = request.form["url"]
         imagePath = imagePath.split(sep, 1)[0]
+        r = requests.get(imagePath, stream=True)
+        if r.status_code != 200:
+            imagePath = request.form["url"]
 
     sku = request.form["sku"]
     sku.replace(" ", "")
@@ -699,9 +702,15 @@ def ImageCsv():
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                     sep = "?"
                                     imageUrl = imageUrl.split(sep, 1)[0]
+
                                     try:
                                         print(imageUrl)
-                                        requests.get(imageUrl, stream=True)
+                                        r = requests.get(imageUrl, stream=True)
+                                        if r.status_code != 200:
+                                            imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                        else:
+                                            requests.get(imageUrl, stream=True)
+
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
 
                                         try:
@@ -831,6 +840,9 @@ def ImageCsv():
                                 sep = "?"
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 imageUrl = imageUrl.split(sep, 1)[0]
+                                r = requests.get(imageUrl, stream=True)
+                                if r.status_code != 200:
+                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 if imageUrl == "" or pd.isnull(imageUrl):
                                     dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
                                     dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
