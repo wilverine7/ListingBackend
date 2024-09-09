@@ -24,22 +24,22 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
-app.config["ca_auth_token"] = os.environ["ca_auth_token"]
-app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
+# app.config["SECRET_KEY"] = os.urandom(28)
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["ca_auth_token"] = os.environ["ca_auth_token"]
+# app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
 
-# import credentials
+import credentials
 
-# app.config["HOSTNAME"] = credentials.hostname
-# app.config["USERNAME"] = credentials.username
-# app.config["PASSWORD"] = credentials.password
-# app.config["GSHEETSKEY"] = credentials.gsheetskey
-# app.config["ca_auth_token"] = credentials.ca_auth_token
-# app.config["ca_refresh_token"] = credentials.ca_refresh_token
+app.config["HOSTNAME"] = credentials.hostname
+app.config["USERNAME"] = credentials.username
+app.config["PASSWORD"] = credentials.password
+app.config["GSHEETSKEY"] = credentials.gsheetskey
+app.config["ca_auth_token"] = credentials.ca_auth_token
+app.config["ca_refresh_token"] = credentials.ca_refresh_token
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -840,7 +840,10 @@ def ImageCsv():
                                 sep = "?"
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 imageUrl = imageUrl.split(sep, 1)[0]
-                                r = requests.get(imageUrl, stream=True)
+                                try:
+                                    r = requests.get(imageUrl, stream=True)
+                                except:
+                                    r.status_code = 500
                                 if r.status_code != 200:
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 if imageUrl == "" or pd.isnull(imageUrl):
@@ -1605,6 +1608,42 @@ def filePackageBuilder():
     dfJson = df.to_json(orient="index")
     ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
     return ResponseData
+
+
+import io
+import gzip
+import hmac
+import hashlib
+import base64
+
+
+@app.route("/api/caorders", methods=["POST"])
+def test():
+    compressed_data = request.data
+    signature = request.headers["signature"]
+    print(signature)
+    parts = signature.split(",")
+    vcurrent = next(
+        (part.split("=", 1)[1] for part in parts if part.startswith("vcurrent=")), None
+    )
+    app_secret = "307f450e7b2d47c0bc67af40705eb018"
+
+    print(vcurrent)
+    # Decompress the data
+    with io.BytesIO(compressed_data) as b:
+        with gzip.GzipFile(fileobj=b, mode="rb") as gz:
+            decompressed_data = gz.read()
+    print(decompressed_data)
+
+    # Print or use the decompressed data
+    # Create HMAC SHA-256 hash
+    hmac_obj = hmac.new(app_secret.encode(), decompressed_data, hashlib.sha256)
+    base64_hmac = base64.b64encode(hmac_obj.digest()).decode("utf-8")
+
+    # Print the base64-encoded HMAC
+    print(base64_hmac)
+
+    return "success"
 
 
 if __name__ == "__main__":
