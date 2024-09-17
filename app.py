@@ -843,8 +843,10 @@ def ImageCsv():
                                 try:
                                     r = requests.get(imageUrl, stream=True)
                                 except:
-                                    r.status_code = 500
-                                if r.status_code != 200:
+                                    status_code = 500
+                                else:
+                                    status_code = r.status_code
+                                if status_code != 200:
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 if imageUrl == "" or pd.isnull(imageUrl):
                                     dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
