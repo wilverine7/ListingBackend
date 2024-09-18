@@ -765,28 +765,29 @@ def ImageCsv():
                                         # if the imagePath contains a . split the string and get everything before the .
                                         if "." in imagePath:
                                             fileName = imagePath.split(".")[0]
+                                            imagePath = fileName
                                         else:
                                             fileName = imagePath
 
-                                            for file in folder:
-                                                if (
-                                                    file.filename.endswith(".jpg")
-                                                    or file.filename.endswith(".png")
-                                                    or file.filename.endswith(".jpeg")
-                                                    or file.filename.endswith(".webp")
-                                                    or file.filename.endswith(".JPG")
-                                                    or file.filename.endswith(".JPEG")
-                                                    or file.filename.endswith(".PNG")
-                                                    or file.filename.endswith(".WEBP")
-                                                ):
-                                                    imageName = file.filename.rsplit(
-                                                        "/", 1
-                                                    )[-1]
-                                                    # remove the file extenstion from the imageName
-                                                    imageName = imageName.split(".")[0]
+                                        for file in folder:
+                                            if (
+                                                file.filename.endswith(".jpg")
+                                                or file.filename.endswith(".png")
+                                                or file.filename.endswith(".jpeg")
+                                                or file.filename.endswith(".webp")
+                                                or file.filename.endswith(".JPG")
+                                                or file.filename.endswith(".JPEG")
+                                                or file.filename.endswith(".PNG")
+                                                or file.filename.endswith(".WEBP")
+                                            ):
+                                                imageName = file.filename.rsplit(
+                                                    "/", 1
+                                                )[-1]
+                                                # remove the file extenstion from the imageName
+                                                imageName = imageName.split(".")[0]
 
-                                                    if imageName == fileName:
-                                                        imagePath = file
+                                                if imageName == fileName:
+                                                    imagePath = file
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
                                         try:
                                             image = Image.open(imagePath).convert(
