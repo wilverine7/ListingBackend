@@ -625,12 +625,15 @@ def ImageCsv():
             df["PARENT_SKU_COLOR"] = df["PARENT_SKU_COLOR"].astype(str)
             uniqueCombo = df["PARENT_SKU_COLOR"].unique()
             columnIdentifier = "PARENT_SKU_COLOR"
-            if len(uniqueCombo) == 1 and uniqueCombo[0] == "":
-                error = "There are no values for the Parent SKU Color column. Please make sure there are values in the column. OR remove the header if you want to use SKU as the identifier."
-                return (error, status.HTTP_400_BAD_REQUEST)
-        else:
-            uniqueCombo = df["SKU"].unique()
-            columnIdentifier = "SKU"
+            print(uniqueCombo[0])
+            if len(uniqueCombo) == 1 and (
+                uniqueCombo[0] == "" or uniqueCombo[0] == "nan"
+            ):
+                columnIdentifier = "SKU"
+                uniqueCombo = df["SKU"].unique()
+            else:
+                uniqueCombo = df["SKU"].unique()
+                columnIdentifier = "SKU"
 
         # allows you to upload a file or url
         # doesn't require the export sheet. You can export the sourcing sheet
