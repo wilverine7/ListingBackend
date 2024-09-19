@@ -392,3 +392,122 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
             error = f"Request failed with status code {response.status_code}"
             logger.error(response.status_code, response.text)
     return (error, response.text)
+
+
+def singleSkiFileBuilder(df, app, folder):
+    from flask import Flask, request, Response, jsonify
+    import pandas as pd
+    from flask_cors import CORS, cross_origin
+    from datetime import datetime
+    import os
+    import json
+    from datetime import datetime
+    from io import BytesIO
+    import functions as fn
+    import requests
+    import pysftp
+    from PIL import Image
+    from openpyxl.workbook import Workbook
+    from openpyxl.utils.dataframe import dataframe_to_rows
+    from flask_api import status
+    from openpyxl.worksheet.datavalidation import DataValidation
+    import gspread
+    import logging
+    import sys
+    import time
+
+    df = df[df["VARIATION_PARENT_SKU"] != "Parent"]
+    uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
+    folder_name = datetime.today().strftime("%Y-%m-%d")
+
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+
+    columns = []
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
+
+    try:
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name) == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+                    app.logger.info("Created new folder")
+
+            try:
+                # getting the uniqueSku problem is you download images multiple times
+                for combo in uniqueCombo:
+                    comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
+                    sku = combo
+                    comboDf.reset_index(drop=True, inplace=True)
+                    packageType = comboDf["SKI/BOARD"][0].upper()
+                    if comboDf["SKI/BOARD"][0].upper() == "SKI":
+                        packageType = "Ski"
+                    elif comboDf["SKI/BOARD"][0].upper() == "BOARD":
+                        packageType = "Board"
+                    else:
+                        error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
+                        return (error, status.HTTP_400_BAD_REQUEST)
+                    imagePath = comboDf["MAIN_IMAGE_URL"][0]
+                    try:
+                        r = requests.get(imagePath, stream=True)
+                    except:
+                        status_code = 500
+                    else:
+                        status_code = r.status_code
+                    if status_code != 200:
+                        # if the imagePath contains a . split the string and get everything before the .
+                        if "." in imagePath:
+                            fileName = imagePath.split(".")[0]
+                            fileName = fileName.strip()
+                        else:
+                            fileName = imagePath
+                            fileName = fileName.strip()
+
+                        for file in folder:
+                            imageName = file.filename.rsplit("/", 1)[-1]
+                            # remove the file extenstion from the imageName
+                            imageName = imageName.split(".")[0]
+
+                            if imageName == fileName:
+                                imagePath = file
+                    packageImage = skiBuilder(imagePath)
+
+                    image_io = BytesIO()
+                    packageImage.convert("RGB").save(image_io, "JPEG")
+
+                    # Upload the image to the server
+                    image_io.seek(0)  # Reset the file pointer to the beginning
+
+                    imageNumber = 1
+                    folder_name = datetime.today().strftime("%Y-%m-%d")
+                    server_path = (
+                        f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    )
+                    sftp.putfo(image_io, server_path)
+                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    df.loc[
+                        df["VARIATION_PARENT_SKU"] == combo,
+                        "Server Image 1",
+                    ] = BikeWagonUrl
+
+            except Exception as e:
+                print(e)
+    except Exception as e:
+        print(e)
+    df = df.rename(columns={"VARIATION_PARENT_SKU": "PARENT_SKU_COLOR"})
+    df["PARENT_SKU"] = df["PARENT_SKU_COLOR"]
+    df.dropna(subset=["Server Image 1"], inplace=True)
+
+    df.set_index("PARENT_SKU_COLOR", inplace=True)
+    dfJson = df.to_json(orient="index")
+    ResponseData = {"df": dfJson}
+    return ResponseData

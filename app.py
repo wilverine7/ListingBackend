@@ -1357,6 +1357,9 @@ def filePackageBuilder():
     df.columns = df.columns.str.strip()
     df.columns = df.columns.str.replace(" ", "_")
     df.dropna(subset=["MAIN_IMAGE_URL"], inplace=True)
+    if df["BOOT_IMAGE_URL"].count() == 0 and df["BINDING_IMAGE_URL"].count() == 0:
+        test = fn.singleSkiFileBuilder(df, app, folder)
+        return test
 
     df = df[df["VARIATION_PARENT_SKU"] != "Parent"]
     uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
@@ -1444,6 +1447,13 @@ def filePackageBuilder():
                             packageImage = fn.twoItemBoardPackageBuilder(
                                 skiBoard, binding
                             )
+                    elif (
+                        comboDf["BOOT_IMAGE_URL"].count() == 0
+                        and comboDf["BINDING_IMAGE_URL"].count() == 0
+                    ):
+                        total = 1
+                        ski = comboDf["MAIN_IMAGE_URL"][0]
+                        packageImage = fn.singleSkiFileBuilder(ski)
 
                     image_io = BytesIO()
                     packageImage.convert("RGB").save(image_io, "JPEG")
@@ -1614,42 +1624,6 @@ def filePackageBuilder():
     dfJson = df.to_json(orient="index")
     ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
     return ResponseData
-
-
-import io
-import gzip
-import hmac
-import hashlib
-import base64
-
-
-@app.route("/api/caorders", methods=["POST"])
-def test():
-    compressed_data = request.data
-    signature = request.headers["signature"]
-    print(signature)
-    parts = signature.split(",")
-    vcurrent = next(
-        (part.split("=", 1)[1] for part in parts if part.startswith("vcurrent=")), None
-    )
-    app_secret = "307f450e7b2d47c0bc67af40705eb018"
-
-    print(vcurrent)
-    # Decompress the data
-    with io.BytesIO(compressed_data) as b:
-        with gzip.GzipFile(fileobj=b, mode="rb") as gz:
-            decompressed_data = gz.read()
-    print(decompressed_data)
-
-    # Print or use the decompressed data
-    # Create HMAC SHA-256 hash
-    hmac_obj = hmac.new(app_secret.encode(), decompressed_data, hashlib.sha256)
-    base64_hmac = base64.b64encode(hmac_obj.digest()).decode("utf-8")
-
-    # Print the base64-encoded HMAC
-    print(base64_hmac)
-
-    return "success"
 
 
 if __name__ == "__main__":
