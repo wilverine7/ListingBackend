@@ -18,28 +18,31 @@ import gspread
 import logging
 import sys
 import time
+from flask_socketio import SocketIO
+import threading
+import uuid
 
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
-app.config["ca_auth_token"] = os.environ["ca_auth_token"]
-app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
+# app.config["SECRET_KEY"] = os.urandom(28)
+# app.config["HOSTNAME"] = os.environ["FLASK_HOSTNAME"]
+# app.config["USERNAME"] = os.environ["FLASK_USERNAME"]
+# app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
+# app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
+# app.config["ca_auth_token"] = os.environ["ca_auth_token"]
+# app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
 
-# import credentials
+import credentials
 
-# app.config["HOSTNAME"] = credentials.hostname
-# app.config["USERNAME"] = credentials.username
-# app.config["PASSWORD"] = credentials.password
-# app.config["GSHEETSKEY"] = credentials.gsheetskey
-# app.config["ca_auth_token"] = credentials.ca_auth_token
-# app.config["ca_refresh_token"] = credentials.ca_refresh_token
+app.config["HOSTNAME"] = credentials.hostname
+app.config["USERNAME"] = credentials.username
+app.config["PASSWORD"] = credentials.password
+app.config["GSHEETSKEY"] = credentials.gsheetskey
+app.config["ca_auth_token"] = credentials.ca_auth_token
+app.config["ca_refresh_token"] = credentials.ca_refresh_token
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
@@ -62,6 +65,9 @@ log_handler.setFormatter(formatter)
 logger.addHandler(log_handler)
 
 
+socketio = SocketIO(app)
+
+
 def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
@@ -73,6 +79,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 
 sys.excepthook = handle_exception
+task_progress = {}
 
 
 @app.route("/", methods=["GET"])
@@ -581,301 +588,157 @@ def CaUpload():
     return responseJson, 200
 
 
-@app.route("/ImageCsv", methods=["GET", "POST"])
-@cross_origin(supports_credentials=True)
-def ImageCsv():
-    if request.method == "GET":
-        return "ImageCsv"
-    else:
-        app.logger.info("ImageCsv - POST")
-        totalUploaded = 0
+def ImageCsv(task_id, file, folder):
+    app.logger.info("ImageCsv - POST")
 
-        file = request.files["file"]
-        folder = request.files.getlist("file[]")
-        df = pd.read_csv(file)
-        # if the url doesn't work, keep track of it and remove it from the df
-        BrokenUrlDict = {}
-        # need to come up with an error catch for columns
-        df.columns = map(str.upper, df.columns)
-        df.columns = df.columns.str.strip()
-        df.columns = df.columns.str.replace(" ", "_")
+    df = pd.read_csv(file)
+    # if the url doesn't work, keep track of it and remove it from the df
+    BrokenUrlDict = {}
+    # need to come up with an error catch for columns
+    df.columns = map(str.upper, df.columns)
+    df.columns = df.columns.str.strip()
+    df.columns = df.columns.str.replace(" ", "_")
 
-        print(df.dtypes)
+    print(df.dtypes)
 
-        # if not folder:
-        #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
+    # if not folder:
+    #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
 
-        #     if all(value in df.columns for value in columnList):
-        #         print("All values are present in column names.")
-        #     else:
-        #         error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
-        #         return error, status.HTTP_400_BAD_REQUEST
-        df.dropna(subset=["IMAGE_1"], inplace=True)
-        df_copy = df.dropna(axis=1, how="all")
-        folder_name = datetime.today().strftime("%Y-%m-%d")
-        # maxPictureCount is used to extend the df columns to the right number of images.
-        maxImageColCount = 1
+    #     if all(value in df.columns for value in columnList):
+    #         print("All values are present in column names.")
+    #     else:
+    #         error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
+    #         return error, status.HTTP_400_BAD_REQUEST
+    df.dropna(subset=["IMAGE_1"], inplace=True)
+    df_copy = df.dropna(axis=1, how="all")
+    folder_name = datetime.today().strftime("%Y-%m-%d")
+    # maxPictureCount is used to extend the df columns to the right number of images.
+    maxImageColCount = 1
 
-        # see how many images columns there are and add one extra to avoid index out of range error
-        while f"IMAGE_{maxImageColCount}" in df_copy.columns:
-            maxImageColCount += 1
-        maxImageColCount -= 1
+    # see how many images columns there are and add one extra to avoid index out of range error
+    while f"IMAGE_{maxImageColCount}" in df_copy.columns:
+        maxImageColCount += 1
+    maxImageColCount -= 1
 
-        if "PARENT_SKU_COLOR" in df.columns:
-            df["PARENT_SKU_COLOR"] = df["PARENT_SKU_COLOR"].astype(str)
-            uniqueCombo = df["PARENT_SKU_COLOR"].unique()
-            columnIdentifier = "PARENT_SKU_COLOR"
-            print(uniqueCombo[0])
-            if len(uniqueCombo) == 1 and (
-                uniqueCombo[0] == "" or uniqueCombo[0] == "nan"
-            ):
-                columnIdentifier = "SKU"
-                uniqueCombo = df["SKU"].unique()
-            else:
-                uniqueCombo = df["SKU"].unique()
-                columnIdentifier = "SKU"
+    if "PARENT_SKU_COLOR" in df.columns:
+        df["PARENT_SKU_COLOR"] = df["PARENT_SKU_COLOR"].astype(str)
+        uniqueCombo = df["PARENT_SKU_COLOR"].unique()
+        columnIdentifier = "PARENT_SKU_COLOR"
+        print(uniqueCombo[0])
+        if len(uniqueCombo) == 1 and (uniqueCombo[0] == "" or uniqueCombo[0] == "nan"):
+            columnIdentifier = "SKU"
+            uniqueCombo = df["SKU"].unique()
+        else:
+            uniqueCombo = df["SKU"].unique()
+            columnIdentifier = "SKU"
+    totalUploaded = 0
+    totalImages = (
+        df[
+            [
+                "IMAGE_1",
+                "IMAGE_2",
+                "IMAGE_3",
+                "IMAGE_4",
+                "IMAGE_5",
+                "IMAGE_6",
+                "IMAGE_7",
+                "IMAGE_8",
+                "IMAGE_9",
+            ]
+        ]
+        .count()
+        .sum()
+    )
+    print(f"total images: {totalImages}")
+    task_progress[task_id] = f"{totalUploaded / totalImages}"
 
-        # allows you to upload a file or url
-        # doesn't require the export sheet. You can export the sourcing sheet
+    # allows you to upload a file or url
+    # doesn't require the export sheet. You can export the sourcing sheet
 
-        hostname = app.config["HOSTNAME"]
-        username = app.config["USERNAME"]
-        password = app.config["PASSWORD"]
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
 
-        columns = []
-        cnopts = pysftp.CnOpts()
-        cnopts.hostkeys = None
+    columns = []
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
-        try:
-            with pysftp.Connection(
-                hostname,
-                username=username,
-                password=password,
-                cnopts=cnopts,
-            ) as sftp:
-                app.logger.info("Connected to FTP server")
-                with sftp.cd("public_html/media/L9/"):
-                    if sftp.exists(folder_name) == False:
-                        # create new directory at public_html/media/L9/ with the folder_name variable
-                        sftp.mkdir(folder_name)
-                        app.logger.info("Created new folder")
+    try:
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name) == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+                    app.logger.info("Created new folder")
+            try:
+                # getting the uniqueSku problem is you download images multiple times
+                for combo in uniqueCombo:
+                    app.logger.debug(f"Processing combo: {combo}")
+                    urlList = ""
 
-                try:
-                    # getting the uniqueSku problem is you download images multiple times
-                    for combo in uniqueCombo:
-                        app.logger.debug(f"Processing combo: {combo}")
-                        urlList = ""
+                    # x keeps track of the number of images for each parent SKU color combo
+                    x = 1
+                    # CaDf.append([{"Inventory Number": sku}])
+                    dfCombo = df[df[columnIdentifier] == combo]
 
-                        # x keeps track of the number of images for each parent SKU color combo
-                        x = 1
-                        # CaDf.append([{"Inventory Number": sku}])
-                        dfCombo = df[df[columnIdentifier] == combo]
+                    # if a parent_color combo has more than one unique URL in the comboDf we need to handle it differently
+                    uniquePath = dfCombo[f"IMAGE_{x}"].unique()
+                    # dfCombo.dropna(axis=1, inplace=True)
+                    dfCombo.reset_index(drop=True, inplace=True)
+                    # print(dfCombo)
+                    # error catch: Could also change this to process the filtered df by Child sku and not make the user do it manually
+                    # Allows there to be unique urls even if the parent sku combo is the same
 
-                        # if a parent_color combo has more than one unique URL in the comboDf we need to handle it differently
-                        uniquePath = dfCombo[f"IMAGE_{x}"].unique()
-                        # dfCombo.dropna(axis=1, inplace=True)
-                        dfCombo.reset_index(drop=True, inplace=True)
-                        # print(dfCombo)
-                        # error catch: Could also change this to process the filtered df by Child sku and not make the user do it manually
-                        # Allows there to be unique urls even if the parent sku combo is the same
+                    ### ASSUMPTION ####
+                    # if the Image_1 url is the same for all rows of the parent sku combo then it will process them all together.
+                    # if we there is a case where image 1 is the same but image 2 is different that is not handled.
+                    if len(uniquePath) > 1:
+                        # this goes by SKU rather than combo so if there are multiple unique urls for a sku it will process them
+                        print(uniquePath)
+                        for unique in uniquePath:
+                            # reset to the original dfCombo
+                            dfCombo = df[df[columnIdentifier] == combo]
+                            x = 1
+                            # get each line with unique URLS
+                            dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] == unique]
+                            dfCombo.reset_index(drop=True, inplace=True)
+                            sku = dfCombo["SKU"][0]
+                            print(dfCombo["SKU"][0])
 
-                        ### ASSUMPTION ####
-                        # if the Image_1 url is the same for all rows of the parent sku combo then it will process them all together.
-                        # if we there is a case where image 1 is the same but image 2 is different that is not handled.
-
-                        if len(uniquePath) > 1:
-                            # this goes by SKU rather than combo so if there are multiple unique urls for a sku it will process them
-                            print(uniquePath)
-                            for unique in uniquePath:
-                                # reset to the original dfCombo
-                                dfCombo = df[df[columnIdentifier] == combo]
-                                x = 1
-                                # get each line with unique URLS
-                                dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] == unique]
-                                dfCombo.reset_index(drop=True, inplace=True)
-                                sku = dfCombo["SKU"][0]
-                                print(dfCombo["SKU"][0])
-
-                                print(dfCombo[f"IMAGE_{x}"][0])
-                                while (
-                                    f"IMAGE_{x}" in dfCombo.columns
-                                    and dfCombo[f"IMAGE_{x}"].count() > 0
-                                ):
-                                    # if it is a url
-                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                                    sep = "?"
-                                    imageUrl = imageUrl.split(sep, 1)[0]
-
-                                    try:
-                                        print(imageUrl)
-                                        r = requests.get(imageUrl, stream=True)
-                                        if r.status_code != 200:
-                                            imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                                        else:
-                                            requests.get(imageUrl, stream=True)
-
-                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
-
-                                        try:
-                                            headers = {
-                                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-                                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
-                                            }
-                                            response = requests.get(
-                                                imageUrl, stream=True, headers=headers
-                                            )
-                                            image = Image.open(
-                                                BytesIO(response.content)
-                                            ).convert("RGBA")
-                                            image_io = fn.process_image(image)
-                                            sftp.putfo(image_io, server_path)
-                                            totalUploaded += 1
-                                            app.logger.info(
-                                                f"Total images uploaded: {totalUploaded}"
-                                            )
-                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
-
-                                            # adds a column with the value of the new url to the df
-                                            df.loc[
-                                                df["SKU"] == sku,
-                                                f"Server Image {x}",
-                                            ] = BikeWagonUrl
-
-                                            # adds the new column name to the list so we can get all the needed columns later
-                                            if f"Server Image {x}" not in columns:
-                                                columns.append(f"Server Image {x}")
-
-                                            # adds the url to the urlList variable so we can add it to the csv file for Channal Advisor upload
-                                            if urlList == "":
-                                                urlList = BikeWagonUrl
-                                            else:
-                                                urlList = urlList + "," + BikeWagonUrl
-
-                                        except Exception as e:
-                                            app.logger.error(f"Error: {str(e)}")
-                                            print(f"Error: {str(e)}")
-                                            if sku not in BrokenUrlDict:
-                                                BrokenUrlDict[sku] = f"IMAGE_{x}"
-                                            else:
-                                                BrokenUrlDict[sku] += f", IMAGE_{x}"
-
-                                        x += 1
-
-                                    except:
-                                        # this will be the image name in the folder that is uploaded
-                                        imagePath = dfCombo[f"IMAGE_{x}"][0]
-
-                                        # if the imagePath contains a . split the string and get everything before the .
-                                        if "." in imagePath:
-                                            fileName = imagePath.split(".")[0]
-                                            imagePath = fileName
-                                        else:
-                                            fileName = imagePath
-
-                                        for file in folder:
-                                            if (
-                                                file.filename.endswith(".jpg")
-                                                or file.filename.endswith(".png")
-                                                or file.filename.endswith(".jpeg")
-                                                or file.filename.endswith(".webp")
-                                                or file.filename.endswith(".JPG")
-                                                or file.filename.endswith(".JPEG")
-                                                or file.filename.endswith(".PNG")
-                                                or file.filename.endswith(".WEBP")
-                                            ):
-                                                imageName = file.filename.rsplit(
-                                                    "/", 1
-                                                )[-1]
-                                                # remove the file extenstion from the imageName
-                                                imageName = imageName.split(".")[0]
-
-                                                if imageName == fileName:
-                                                    imagePath = file
-                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
-                                        try:
-                                            image = Image.open(imagePath).convert(
-                                                "RGBA"
-                                            )
-
-                                            image_io = fn.process_image(image)
-
-                                            sftp.putfo(image_io, server_path)
-                                            totalUploaded += 1
-                                            app.logger.info(
-                                                f"Total images uploaded: {totalUploaded}"
-                                            )
-                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
-                                            df.loc[
-                                                df[columnIdentifier] == sku,
-                                                f"Server Image {x}",
-                                            ] = BikeWagonUrl
-                                            if f"Server Image {x}" not in columns:
-                                                columns.append(f"Server Image {x}")
-                                            if urlList == "":
-                                                urlList = BikeWagonUrl
-                                            else:
-                                                urlList = urlList + "," + BikeWagonUrl
-
-                                        except Exception as e:
-                                            app.logger.warn(
-                                                f"Error: {str(e)} -- {imagePath}"
-                                            )
-                                            print(imagePath)
-                                            print(f"Error: {str(e)}")
-                                            if sku not in BrokenUrlDict:
-                                                BrokenUrlDict[sku] = f"IMAGE_{x}"
-                                            else:
-                                                BrokenUrlDict[sku] += f", IMAGE_{x}"
-                                            print(BrokenUrlDict)
-
-                                        x += 1
-
-                        else:
-                            # this process the df using just parent so if all children have the same url it will process them
+                            print(dfCombo[f"IMAGE_{x}"][0])
                             while (
                                 f"IMAGE_{x}" in dfCombo.columns
                                 and dfCombo[f"IMAGE_{x}"].count() > 0
                             ):
-                                ####### I need to fix x and make sure the variable isn't reused####
-
-                                # if the first row doesn't have an image but another row does have an image we need to use that image
-
                                 # if it is a url
-                                sep = "?"
                                 imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                sep = "?"
                                 imageUrl = imageUrl.split(sep, 1)[0]
-                                try:
-                                    r = requests.get(imageUrl, stream=True)
-                                except:
-                                    status_code = 500
-                                else:
-                                    status_code = r.status_code
-                                if status_code != 200:
-                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                                if imageUrl == "" or pd.isnull(imageUrl):
-                                    dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
-                                    dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
-                                    dfCombo.reset_index(drop=True, inplace=True)
-                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                                try:
-                                    headers = {
-                                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-                                        # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
-                                    }
-                                    response = requests.get(
-                                        imageUrl, stream=True, headers=headers
-                                    )
-                                except:
-                                    # this is a broken url so we don't get a response on purpose
-                                    response = requests.get(
-                                        "https://bikewagonmedia.com/BrokenUrl",
-                                        stream=True,
-                                    )
 
-                                server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
-                                app.logger.info(f"{imageUrl} -- {response.status_code}")
-                                if response.status_code == 200:
+                                try:
+                                    print(imageUrl)
+                                    r = requests.get(imageUrl, stream=True)
+                                    if r.status_code != 200:
+                                        imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                    else:
+                                        requests.get(imageUrl, stream=True)
+
+                                    server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
+
                                     try:
+                                        headers = {
+                                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                            # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                        }
+                                        response = requests.get(
+                                            imageUrl, stream=True, headers=headers
+                                        )
                                         image = Image.open(
                                             BytesIO(response.content)
                                         ).convert("RGBA")
@@ -885,50 +748,67 @@ def ImageCsv():
                                         app.logger.info(
                                             f"Total images uploaded: {totalUploaded}"
                                         )
-                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        task_progress[task_id] = (
+                                            f"{totalUploaded/totalImages}"
+                                        )
+                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+
+                                        # adds a column with the value of the new url to the df
                                         df.loc[
-                                            df[columnIdentifier] == combo,
+                                            df["SKU"] == sku,
                                             f"Server Image {x}",
                                         ] = BikeWagonUrl
+
+                                        # adds the new column name to the list so we can get all the needed columns later
                                         if f"Server Image {x}" not in columns:
                                             columns.append(f"Server Image {x}")
+
+                                        # adds the url to the urlList variable so we can add it to the csv file for Channal Advisor upload
                                         if urlList == "":
                                             urlList = BikeWagonUrl
                                         else:
                                             urlList = urlList + "," + BikeWagonUrl
+                                        task_progress[task_id] += 1
 
                                     except Exception as e:
                                         app.logger.error(f"Error: {str(e)}")
                                         print(f"Error: {str(e)}")
-                                        print(imageUrl)
-                                        if combo not in BrokenUrlDict:
-                                            BrokenUrlDict[combo] = f"IMAGE_{x}"
+                                        if sku not in BrokenUrlDict:
+                                            BrokenUrlDict[sku] = f"IMAGE_{x}"
                                         else:
-                                            BrokenUrlDict[combo] += f", IMAGE_{x}"
-                                        print(BrokenUrlDict)
+                                            BrokenUrlDict[sku] += f", IMAGE_{x}"
 
                                     x += 1
 
-                                else:
+                                except:
                                     # this will be the image name in the folder that is uploaded
                                     imagePath = dfCombo[f"IMAGE_{x}"][0]
 
                                     # if the imagePath contains a . split the string and get everything before the .
                                     if "." in imagePath:
                                         fileName = imagePath.split(".")[0]
-                                        fileName = fileName.strip()
+                                        imagePath = fileName
                                     else:
                                         fileName = imagePath
-                                        fileName = fileName.strip()
 
                                     for file in folder:
-                                        imageName = file.filename.rsplit("/", 1)[-1]
-                                        # remove the file extenstion from the imageName
-                                        imageName = imageName.split(".")[0]
+                                        if (
+                                            file.filename.endswith(".jpg")
+                                            or file.filename.endswith(".png")
+                                            or file.filename.endswith(".jpeg")
+                                            or file.filename.endswith(".webp")
+                                            or file.filename.endswith(".JPG")
+                                            or file.filename.endswith(".JPEG")
+                                            or file.filename.endswith(".PNG")
+                                            or file.filename.endswith(".WEBP")
+                                        ):
+                                            imageName = file.filename.rsplit("/", 1)[-1]
+                                            # remove the file extenstion from the imageName
+                                            imageName = imageName.split(".")[0]
 
-                                        if imageName == fileName:
-                                            imagePath = file
-                                    server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                            if imageName == fileName:
+                                                imagePath = file
+                                    server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
                                     try:
                                         image = Image.open(imagePath).convert("RGBA")
 
@@ -939,9 +819,12 @@ def ImageCsv():
                                         app.logger.info(
                                             f"Total images uploaded: {totalUploaded}"
                                         )
-                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        task_progress[task_id] = (
+                                            f"{totalUploaded/totalImages}"
+                                        )
+                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
                                         df.loc[
-                                            df[columnIdentifier] == combo,
+                                            df[columnIdentifier] == sku,
                                             f"Server Image {x}",
                                         ] = BikeWagonUrl
                                         if f"Server Image {x}" not in columns:
@@ -952,96 +835,268 @@ def ImageCsv():
                                             urlList = urlList + "," + BikeWagonUrl
 
                                     except Exception as e:
-                                        app.logger.error(f"Error: {str(e)}")
-                                        app.logger.error(
-                                            f"There was an issue with {imagePath}"
+                                        app.logger.warn(
+                                            f"Error: {str(e)} -- {imagePath}"
                                         )
                                         print(imagePath)
                                         print(f"Error: {str(e)}")
-                                        if combo not in BrokenUrlDict:
-                                            BrokenUrlDict[combo] = f"IMAGE_{x}"
+                                        if sku not in BrokenUrlDict:
+                                            BrokenUrlDict[sku] = f"IMAGE_{x}"
                                         else:
-                                            BrokenUrlDict[combo] += f", IMAGE_{x}"
+                                            BrokenUrlDict[sku] += f", IMAGE_{x}"
                                         print(BrokenUrlDict)
+
                                     x += 1
 
-                        df.loc[df[columnIdentifier] == combo, "Picture URLs"] = urlList
-                except Exception as e:
-                    app.logger.error(f"ERROR: {e}")
-                    print(f"Error: {str(e)}")
-                    error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
-                    return (error, status.HTTP_400_BAD_REQUEST)
+                    else:
+                        # this process the df using just parent so if all children have the same url it will process them
+                        while (
+                            f"IMAGE_{x}" in dfCombo.columns
+                            and dfCombo[f"IMAGE_{x}"].count() > 0
+                        ):
+                            ####### I need to fix x and make sure the variable isn't reused####
 
-        except Exception as e:
-            app.logger.error(f"ERROR: {e}")
-            error = f"An error occured connecting to the FTP server. Contact IT"
-            print(combo)
-            print(f"Error: {str(e)}")
-            return (error, status.HTTP_400_BAD_REQUEST)
+                            # if the first row doesn't have an image but another row does have an image we need to use that image
 
-        app.logger.info("Finished uploading images")
+                            # if it is a url
+                            sep = "?"
+                            imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                            imageUrl = imageUrl.split(sep, 1)[0]
+                            try:
+                                r = requests.get(imageUrl, stream=True)
+                            except:
+                                status_code = 500
+                            else:
+                                status_code = r.status_code
+                            if status_code != 200:
+                                imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                            if imageUrl == "" or pd.isnull(imageUrl):
+                                dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
+                                dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
+                                dfCombo.reset_index(drop=True, inplace=True)
+                                imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                            try:
+                                headers = {
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                }
+                                response = requests.get(
+                                    imageUrl, stream=True, headers=headers
+                                )
+                            except:
+                                # this is a broken url so we don't get a response on purpose
+                                response = requests.get(
+                                    "https://bikewagonmedia.com/BrokenUrl",
+                                    stream=True,
+                                )
 
-        if "PARENT_SKU" in df.columns:
-            columns.extend(
-                [
-                    "SKU",
-                    "PARENT_SKU",
-                    "PARENT_SKU_COLOR",
-                    "Picture URLs",
-                ]
-            )
-        else:
-            columns.extend(
-                [
-                    "SKU",
-                    "Picture URLs",
-                ]
-            )
-        # if there is a video column and it is not empty add video to the df we will return
-        if "VIDEO" in df.columns and df["VIDEO"].count() > 0:
-            df["Attribute1Name"] = "VideoProduct"
-            df.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
-            columns.extend(["Attribute1Value", "Attribute1Name"])
-        if "TITLE" in df.columns and df["TITLE"].count() > 0:
-            columns.extend(["TITLE"])
-        ServerImageColumns = []
-        x = 0
-        while x < maxImageColCount:
-            x += 1
-            columns.extend([f"IMAGE_{x}"])
-            ServerImageColumns.append(f"Server Image {x}")
-        try:
-            df = df[columns]
-        except Exception as e:
-            app.logger.error(f"ERROR: {e}")
-            error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum. (case matters)"
-            return error, status.HTTP_400_BAD_REQUEST
+                            server_path = (
+                                f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                            )
+                            app.logger.info(f"{imageUrl} -- {response.status_code}")
+                            if response.status_code == 200:
+                                try:
+                                    image = Image.open(
+                                        BytesIO(response.content)
+                                    ).convert("RGBA")
+                                    image_io = fn.process_image(image)
+                                    sftp.putfo(image_io, server_path)
+                                    totalUploaded += 1
+                                    app.logger.info(
+                                        f"Total images uploaded: {totalUploaded}"
+                                    )
+                                    task_progress[task_id] = (
+                                        f"{totalUploaded/totalImages}"
+                                    )
+                                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                    df.loc[
+                                        df[columnIdentifier] == combo,
+                                        f"Server Image {x}",
+                                    ] = BikeWagonUrl
+                                    if f"Server Image {x}" not in columns:
+                                        columns.append(f"Server Image {x}")
+                                    if urlList == "":
+                                        urlList = BikeWagonUrl
+                                    else:
+                                        urlList = urlList + "," + BikeWagonUrl
 
-        # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
-        df = df.dropna(subset=ServerImageColumns, how="all")
+                                except Exception as e:
+                                    app.logger.error(f"Error: {str(e)}")
+                                    print(f"Error: {str(e)}")
+                                    print(imageUrl)
+                                    if combo not in BrokenUrlDict:
+                                        BrokenUrlDict[combo] = f"IMAGE_{x}"
+                                    else:
+                                        BrokenUrlDict[combo] += f", IMAGE_{x}"
+                                    print(BrokenUrlDict)
 
-        try:
-            df.set_index("SKU", inplace=True)
-            dfJson = df.to_json(orient="index")
-        except Exception as e:
-            app.logger.error(f"ERROR: {e}")
-            print(f"Error: {str(e)}")
-            error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
-            return error, status.HTTP_400_BAD_REQUEST
+                                x += 1
 
-        # create a dictionary using the sku as the key and the Server Image 1 with the url as the value
+                            else:
+                                # this will be the image name in the folder that is uploaded
+                                imagePath = dfCombo[f"IMAGE_{x}"][0]
 
-        # print(response.headers)
+                                # if the imagePath contains a . split the string and get everything before the .
+                                if "." in imagePath:
+                                    fileName = imagePath.split(".")[0]
+                                    fileName = fileName.strip()
+                                else:
+                                    fileName = imagePath
+                                    fileName = fileName.strip()
 
-        # this will pass the rows as objects
-        # return df.to_json(orient="records")
-        if BrokenUrlDict == {}:
-            ResponseData = {"df": dfJson}
+                                for file in folder:
+                                    imageName = file.filename.rsplit("/", 1)[-1]
+                                    # remove the file extenstion from the imageName
+                                    imageName = imageName.split(".")[0]
 
-        else:
-            ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
+                                    if imageName == fileName:
+                                        imagePath = file
+                                server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                try:
+                                    image = Image.open(imagePath).convert("RGBA")
 
-        return jsonify(ResponseData)
+                                    image_io = fn.process_image(image)
+
+                                    sftp.putfo(image_io, server_path)
+                                    totalUploaded += 1
+                                    app.logger.info(
+                                        f"Total images uploaded: {totalUploaded}"
+                                    )
+                                    task_progress[task_id] = (
+                                        f"{totalUploaded/totalImages}"
+                                    )
+                                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                    df.loc[
+                                        df[columnIdentifier] == combo,
+                                        f"Server Image {x}",
+                                    ] = BikeWagonUrl
+                                    if f"Server Image {x}" not in columns:
+                                        columns.append(f"Server Image {x}")
+                                    if urlList == "":
+                                        urlList = BikeWagonUrl
+                                    else:
+                                        urlList = urlList + "," + BikeWagonUrl
+
+                                except Exception as e:
+                                    app.logger.error(f"Error: {str(e)}")
+                                    app.logger.error(
+                                        f"There was an issue with {imagePath}"
+                                    )
+                                    print(imagePath)
+                                    print(f"Error: {str(e)}")
+                                    if combo not in BrokenUrlDict:
+                                        BrokenUrlDict[combo] = f"IMAGE_{x}"
+                                    else:
+                                        BrokenUrlDict[combo] += f", IMAGE_{x}"
+                                    print(BrokenUrlDict)
+                                x += 1
+
+                    df.loc[df[columnIdentifier] == combo, "Picture URLs"] = urlList
+            except Exception as e:
+                app.logger.error(f"ERROR: {e}")
+                print(f"Error: {str(e)}")
+                error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
+                task_progress[task_id] = error
+                return (error, status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        app.logger.error(f"ERROR: {e}")
+        error = f"An error occured connecting to the FTP server. Contact IT"
+        print(combo)
+        print(f"Error: {str(e)}")
+        task_progress[task_id] = error
+        return (error, status.HTTP_400_BAD_REQUEST)
+
+    app.logger.info("Finished uploading images")
+
+    if "PARENT_SKU" in df.columns:
+        columns.extend(
+            [
+                "SKU",
+                "PARENT_SKU",
+                "PARENT_SKU_COLOR",
+                "Picture URLs",
+            ]
+        )
+    else:
+        columns.extend(
+            [
+                "SKU",
+                "Picture URLs",
+            ]
+        )
+    # if there is a video column and it is not empty add video to the df we will return
+    if "VIDEO" in df.columns and df["VIDEO"].count() > 0:
+        df["Attribute1Name"] = "VideoProduct"
+        df.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
+        columns.extend(["Attribute1Value", "Attribute1Name"])
+    if "TITLE" in df.columns and df["TITLE"].count() > 0:
+        columns.extend(["TITLE"])
+    ServerImageColumns = []
+    x = 0
+    while x < maxImageColCount:
+        x += 1
+        columns.extend([f"IMAGE_{x}"])
+        ServerImageColumns.append(f"Server Image {x}")
+    try:
+        df = df[columns]
+    except Exception as e:
+        app.logger.error(f"ERROR: {e}")
+        error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum. (case matters)"
+        task_progress[task_id] = error
+        return error, status.HTTP_400_BAD_REQUEST
+
+    # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
+    df = df.dropna(subset=ServerImageColumns, how="all")
+
+    try:
+        df.set_index("SKU", inplace=True)
+        dfJson = df.to_json(orient="index")
+    except Exception as e:
+        app.logger.error(f"ERROR: {e}")
+        print(f"Error: {str(e)}")
+        error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
+        task_progress[task_id] = error
+
+        return error, status.HTTP_400_BAD_REQUEST
+
+    # create a dictionary using the sku as the key and the Server Image 1 with the url as the value
+
+    # print(response.headers)
+
+    # this will pass the rows as objects
+    # return df.to_json(orient="records")
+    if BrokenUrlDict == {}:
+        ResponseData = {"df": dfJson}
+
+    else:
+        ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
+
+    return jsonify(ResponseData)
+
+
+@app.route("/ImageCsv", methods=["GET", "POST"])
+@cross_origin(supports_credentials=True)
+def start_task():
+    task_id = str(uuid.uuid4())
+    task_progress[task_id] = 0
+    print(request)
+    file = request.files["file"]
+    folder = request.files.getlist("file[]")
+    progress = task_progress.get(task_id)
+    print(f"{task_id} - HELLO")
+    file_data = BytesIO(file.read())  # Read file content into memory
+    folder_data = [BytesIO(f.read()) for f in folder]  # Read each folder file content
+
+    threading.Thread(target=ImageCsv, args=(task_id, file_data, folder_data)).start()
+    return jsonify({"task_id": task_id})
+
+
+@app.route("/progress/<task_id>", methods=["GET"])
+def get_progress(task_id):
+    progress = task_progress.get(task_id)
+    print(progress)
+    return jsonify({"progress": progress})
 
 
 # It is important that the df has the Picture URLs column or else you will just end up with a list of parent skus and the first picture from the child.
