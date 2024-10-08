@@ -592,23 +592,16 @@ def ImageCsv(task_id, file, folder):
     app.logger.info("ImageCsv - POST")
 
     df = pd.read_csv(file)
+
+    chunk_size = 250
+    num_chunks = len(df) // chunk_size + (len(df) % chunk_size > 0)
     # if the url doesn't work, keep track of it and remove it from the df
     BrokenUrlDict = {}
-    # need to come up with an error catch for columns
+
     df.columns = map(str.upper, df.columns)
     df.columns = df.columns.str.strip()
     df.columns = df.columns.str.replace(" ", "_")
 
-    print(df.dtypes)
-
-    # if not folder:
-    #     columnList = ["Image 1", "SKU", "Parent SKU", "Parent SKU_Color"]
-
-    #     if all(value in df.columns for value in columnList):
-    #         print("All values are present in column names.")
-    #     else:
-    #         error = "Missing column names. Please make sure Image 1, SKU, Parent SKU, and Parent SKU_Color are present in the csv file."
-    #         return error, status.HTTP_400_BAD_REQUEST
     df.dropna(subset=["IMAGE_1"], inplace=True)
     df_copy = df.dropna(axis=1, how="all")
     folder_name = datetime.today().strftime("%Y-%m-%d")
@@ -650,7 +643,7 @@ def ImageCsv(task_id, file, folder):
         .sum()
     )
     print(f"total images: {totalImages}")
-    task_progress[task_id] = f"{totalUploaded / totalImages}"
+    task_progress[task_id] = totalUploaded / totalImages
 
     # allows you to upload a file or url
     # doesn't require the export sheet. You can export the sourcing sheet
@@ -749,7 +742,7 @@ def ImageCsv(task_id, file, folder):
                                             f"Total images uploaded: {totalUploaded}"
                                         )
                                         task_progress[task_id] = (
-                                            f"{totalUploaded/totalImages}"
+                                            totalUploaded / totalImages
                                         )
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
 
@@ -768,7 +761,6 @@ def ImageCsv(task_id, file, folder):
                                             urlList = BikeWagonUrl
                                         else:
                                             urlList = urlList + "," + BikeWagonUrl
-                                        task_progress[task_id] += 1
 
                                     except Exception as e:
                                         app.logger.error(f"Error: {str(e)}")
@@ -820,7 +812,7 @@ def ImageCsv(task_id, file, folder):
                                             f"Total images uploaded: {totalUploaded}"
                                         )
                                         task_progress[task_id] = (
-                                            f"{totalUploaded/totalImages}"
+                                            totalUploaded / totalImages
                                         )
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
                                         df.loc[
@@ -905,9 +897,7 @@ def ImageCsv(task_id, file, folder):
                                     app.logger.info(
                                         f"Total images uploaded: {totalUploaded}"
                                     )
-                                    task_progress[task_id] = (
-                                        f"{totalUploaded/totalImages}"
-                                    )
+                                    task_progress[task_id] = totalUploaded / totalImages
                                     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
                                     df.loc[
                                         df[columnIdentifier] == combo,
@@ -962,9 +952,7 @@ def ImageCsv(task_id, file, folder):
                                     app.logger.info(
                                         f"Total images uploaded: {totalUploaded}"
                                     )
-                                    task_progress[task_id] = (
-                                        f"{totalUploaded/totalImages}"
-                                    )
+                                    task_progress[task_id] = totalUploaded / totalImages
                                     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
                                     df.loc[
                                         df[columnIdentifier] == combo,
@@ -992,12 +980,101 @@ def ImageCsv(task_id, file, folder):
                                 x += 1
 
                     df.loc[df[columnIdentifier] == combo, "Picture URLs"] = urlList
+
             except Exception as e:
                 app.logger.error(f"ERROR: {e}")
                 print(f"Error: {str(e)}")
                 error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
                 task_progress[task_id] = error
                 return (error, status.HTTP_400_BAD_REQUEST)
+
+            app.logger.info("Finished uploading images")
+
+            if "PARENT_SKU" in df.columns:
+                columns.extend(
+                    [
+                        "SKU",
+                        "PARENT_SKU",
+                        "PARENT_SKU_COLOR",
+                        "Picture URLs",
+                    ]
+                )
+            else:
+                columns.extend(
+                    [
+                        "SKU",
+                        "Picture URLs",
+                    ]
+                )
+            # if there is a video column and it is not empty add video to the df we will return
+            if "VIDEO" in df.columns and df["VIDEO"].count() > 0:
+                df["Attribute1Name"] = "VideoProduct"
+                df.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
+                columns.extend(["Attribute1Value", "Attribute1Name"])
+            if "TITLE" in df.columns and df["TITLE"].count() > 0:
+                columns.extend(["TITLE"])
+            ServerImageColumns = []
+            x = 0
+            while x < maxImageColCount:
+                x += 1
+                columns.extend([f"IMAGE_{x}"])
+                ServerImageColumns.append(f"Server Image {x}")
+            try:
+                df = df[columns]
+            except Exception as e:
+                app.logger.error(f"ERROR: {e}")
+                error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum."
+                task_progress[task_id] = error
+                return error, status.HTTP_400_BAD_REQUEST
+
+            # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
+            df = df.dropna(subset=ServerImageColumns, how="all")
+
+            try:
+                df.set_index("SKU", inplace=True)
+                csv_bytes = df.to_csv(index=False).encode(
+                    "utf-8"
+                )  # Encode CSV to bytes using UTF-8
+                csv_buffer = BytesIO(csv_bytes)  # Wrap the bytes into a BytesIO object
+
+                # Reset the buffer pointer to the start
+                csv_buffer.seek(0)
+
+                dfJson = df.to_json(orient="index")
+            except Exception as e:
+                app.logger.error(f"ERROR: {e}")
+                print(f"Error: {str(e)}")
+                error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
+                task_progress[task_id] = error
+                return
+
+            # create a dictionary using the sku as the key and the Server Image 1 with the url as the value
+
+            # print(response.headers)
+
+            # this will pass the rows as objects
+            # return df.to_json(orient="records")
+
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists("uploadedFiles") == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir("uploadedFiles")
+                    app.logger.info("Created new folder")
+                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
+
+            if BrokenUrlDict == {}:
+                ResponseData = {"df": dfJson}
+
+            else:
+                ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
+                broken_url_json = json.dumps(BrokenUrlDict).encode("utf-8")
+                json_buffer = BytesIO(broken_url_json)
+                sftp.putfo(
+                    json_buffer,
+                    f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json",
+                )
+
+            # return jsonify(ResponseData)
 
     except Exception as e:
         app.logger.error(f"ERROR: {e}")
@@ -1007,72 +1084,62 @@ def ImageCsv(task_id, file, folder):
         task_progress[task_id] = error
         return (error, status.HTTP_400_BAD_REQUEST)
 
-    app.logger.info("Finished uploading images")
+    return
 
-    if "PARENT_SKU" in df.columns:
-        columns.extend(
-            [
-                "SKU",
-                "PARENT_SKU",
-                "PARENT_SKU_COLOR",
-                "Picture URLs",
-            ]
-        )
-    else:
-        columns.extend(
-            [
-                "SKU",
-                "Picture URLs",
-            ]
-        )
-    # if there is a video column and it is not empty add video to the df we will return
-    if "VIDEO" in df.columns and df["VIDEO"].count() > 0:
-        df["Attribute1Name"] = "VideoProduct"
-        df.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
-        columns.extend(["Attribute1Value", "Attribute1Name"])
-    if "TITLE" in df.columns and df["TITLE"].count() > 0:
-        columns.extend(["TITLE"])
-    ServerImageColumns = []
-    x = 0
-    while x < maxImageColCount:
-        x += 1
-        columns.extend([f"IMAGE_{x}"])
-        ServerImageColumns.append(f"Server Image {x}")
-    try:
-        df = df[columns]
-    except Exception as e:
-        app.logger.error(f"ERROR: {e}")
-        error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum. (case matters)"
-        task_progress[task_id] = error
-        return error, status.HTTP_400_BAD_REQUEST
 
-    # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
-    df = df.dropna(subset=ServerImageColumns, how="all")
+@app.route("/getImageCsv", methods=["POST"])
+@cross_origin(supports_credentials=True)
+def getImageCsv():
+
+    task_id = request.form["task_id"]
+    print(task_id)
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+    res = {}
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
     try:
-        df.set_index("SKU", inplace=True)
-        dfJson = df.to_json(orient="index")
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+            csv_path = f"public_html/media/L9/uploadedFiles/{task_id}.csv"
+            with BytesIO() as csv_buffer:
+                sftp.getfo(csv_path, csv_buffer)
+                csv_buffer.seek(0)  # Reset buffer position
+                df = pd.read_csv(csv_buffer)
+                dfJson = df.to_json(orient="index")
+                res["df"] = dfJson
+                app.logger.info(f"CSV file for task {task_id} processed successfully")
+            if (
+                sftp.exists(
+                    f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json"
+                )
+                == True
+            ):
+                with BytesIO() as json_buffer:
+                    json_path = (
+                        f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json"
+                    )
+                    sftp.getfo(json_path, json_buffer)
+                    json_buffer.seek(0)
+                    json_data = json_buffer.read().decode(
+                        "utf-8"
+                    )  # Decode bytes to string
+                    broken_urls_json = json.loads(json_data)  # Parse JSON string
+                    res["errorDict"] = broken_urls_json
+            app.logger.info(f"Closed FTP connection for task {task_id}")
+        return jsonify(res)
+
     except Exception as e:
-        app.logger.error(f"ERROR: {e}")
-        print(f"Error: {str(e)}")
-        error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
-        task_progress[task_id] = error
-
-        return error, status.HTTP_400_BAD_REQUEST
-
-    # create a dictionary using the sku as the key and the Server Image 1 with the url as the value
-
-    # print(response.headers)
-
-    # this will pass the rows as objects
-    # return df.to_json(orient="records")
-    if BrokenUrlDict == {}:
-        ResponseData = {"df": dfJson}
-
-    else:
-        ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
-
-    return jsonify(ResponseData)
+        app.logger.error(f"Error processing task {task_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/ImageCsv", methods=["GET", "POST"])
@@ -1095,7 +1162,6 @@ def start_task():
 @app.route("/progress/<task_id>", methods=["GET"])
 def get_progress(task_id):
     progress = task_progress.get(task_id)
-    print(progress)
     return jsonify({"progress": progress})
 
 
