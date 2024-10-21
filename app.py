@@ -18,7 +18,6 @@ import gspread
 import logging
 import sys
 import time
-from flask_socketio import SocketIO
 import threading
 import uuid
 
@@ -63,9 +62,6 @@ log_handler.setFormatter(formatter)
 
 # Add the file handler to the app's logger.
 logger.addHandler(log_handler)
-
-
-socketio = SocketIO(app)
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):
