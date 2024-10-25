@@ -20,6 +20,7 @@ import sys
 import time
 import threading
 import uuid
+import redis
 
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -33,6 +34,7 @@ app.config["PASSWORD"] = os.environ["FLASK_PASSWORD"]
 app.config["GSHEETSKEY"] = os.environ["FLASK_GSHEETS_KEY"]
 app.config["ca_auth_token"] = os.environ["ca_auth_token"]
 app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
+app.config["redis_password"] = os.environ["redis_password"]
 
 # import credentials
 
@@ -42,8 +44,30 @@ app.config["ca_refresh_token"] = os.environ["ca_refresh_token"]
 # app.config["GSHEETSKEY"] = credentials.gsheetskey
 # app.config["ca_auth_token"] = credentials.ca_auth_token
 # app.config["ca_refresh_token"] = credentials.ca_refresh_token
+# app.config["redis_password"] = ''
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+
+# Configure Redis connection
+redis_client = redis.Redis(
+    host="localhost", port=6379, password=app.config["redis_password"]
+)
+
+
+def update_task_field(task_id, field, value):
+    # Retrieve the current task data
+    task_data = redis_client.get(task_id)
+    if task_data:
+        task_data = json.loads(task_data)  # Convert JSON string to dictionary
+    else:
+        task_data = {}  # Initialize if no existing data
+
+    # Update the specified field
+    task_data[field] = value
+
+    # Save the updated dictionary back to Redis
+    redis_client.set(task_id, json.dumps(task_data))
+
 
 # logging.basicConfig(filename='DebugLogs.log', encoding='utf-8', level=logging.DEBUG)
 # logger = logging.getLogger(__name__)
@@ -75,7 +99,6 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 
 sys.excepthook = handle_exception
-task_progress = {}
 
 
 @app.route("/", methods=["GET"])
@@ -669,10 +692,14 @@ def ImageCsv(task_id, file, folder):
                         .sum()
                     )
                     print(f"total images: {totalImages}")
-                    task_progress[task_id] = {
-                        "progress": totalUploaded / totalImages,
-                        "chunks": f"{i+1}/{num_chunks}",
-                    }
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=(totalUploaded / totalImages),
+                    )
+                    update_task_field(
+                        task_id=task_id, field="chunks", value=f"{i+1}/{num_chunks}"
+                    )
                 else:
                     uniqueCombo = chunk["SKU"].unique()
                     totalUploaded = 0
@@ -694,10 +721,14 @@ def ImageCsv(task_id, file, folder):
                         .sum()
                     )
                     print(f"total images: {totalImages}")
-                    task_progress[task_id] = {
-                        "progress": totalUploaded / totalImages,
-                        "chunks": f"{i+1}/{num_chunks}",
-                    }
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=(totalUploaded / totalImages),
+                    )
+                    update_task_field(
+                        task_id=task_id, field="chunks", value=f"{i+1}/{num_chunks}"
+                    )
 
                 with sftp.cd("public_html/media/L9/"):
                     if sftp.exists(folder_name) == False:
@@ -779,8 +810,10 @@ def ImageCsv(task_id, file, folder):
                                             progress = totalUploaded / totalImages
                                             if progress == 1:
                                                 progress = 0.99
-                                            task_progress[task_id].update(
-                                                {"progress": progress}
+                                            update_task_field(
+                                                task_id=task_id,
+                                                field="progress",
+                                                value=progress,
                                             )
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
 
@@ -856,8 +889,10 @@ def ImageCsv(task_id, file, folder):
                                             progress = totalUploaded / totalImages
                                             if progress == 1:
                                                 progress = 0.99
-                                            task_progress[task_id].update(
-                                                {"progress": progress}
+                                            update_task_field(
+                                                task_id=task_id,
+                                                field="progress",
+                                                value=progress,
                                             )
                                             BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
                                             chunk.loc[
@@ -943,8 +978,10 @@ def ImageCsv(task_id, file, folder):
                                         progress = totalUploaded / totalImages
                                         if progress == 1:
                                             progress = 0.99
-                                        task_progress[task_id].update(
-                                            {"progress": progress}
+                                        update_task_field(
+                                            task_id=task_id,
+                                            field="progress",
+                                            value=progress,
                                         )
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
                                         chunk.loc[
@@ -1003,8 +1040,10 @@ def ImageCsv(task_id, file, folder):
                                         progress = totalUploaded / totalImages
                                         if progress == 1:
                                             progress = 0.99
-                                        task_progress[task_id].update(
-                                            {"progress": progress}
+                                        update_task_field(
+                                            task_id=task_id,
+                                            field="progress",
+                                            value=progress,
                                         )
 
                                         BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
@@ -1041,7 +1080,6 @@ def ImageCsv(task_id, file, folder):
                     app.logger.error(f"ERROR: {e}")
                     print(f"Error: {str(e)}")
                     error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
-                    task_progress[task_id].update({"progress": progress})
                     return (error, status.HTTP_400_BAD_REQUEST)
 
                 app.logger.info(f"Finished uploading images for chunk {i+1}")
@@ -1088,7 +1126,6 @@ def ImageCsv(task_id, file, folder):
                 except Exception as e:
                     app.logger.error(f"ERROR: {e}")
                     error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum."
-                    task_progress[task_id].update({"progress": progress})
 
                     return error, status.HTTP_400_BAD_REQUEST
 
@@ -1112,7 +1149,6 @@ def ImageCsv(task_id, file, folder):
                     app.logger.error(f"ERROR: {e}")
                     print(f"Error: {str(e)}")
                     error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
-                    task_progress[task_id].update({"progress": progress})
                     return
 
                 # create a dictionary using the sku as the key and the Server Image 1 with the url as the value
@@ -1135,7 +1171,6 @@ def ImageCsv(task_id, file, folder):
         error = f"An error occured connecting to the FTP server. Contact IT"
         print(combo)
         print(f"Error: {str(e)}")
-        task_progress[task_id].update({"progress": progress})
         return (error, status.HTTP_400_BAD_REQUEST)
 
     if BrokenUrlDict == {}:
@@ -1155,7 +1190,7 @@ def ImageCsv(task_id, file, folder):
                 json_buffer,
                 f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json",
             )
-    task_progress[task_id].update({"progress": 100 / 100})
+    update_task_field(task_id=task_id, field="progress", value=1)
     return
 
 
@@ -1238,12 +1273,10 @@ def getImageCsv():
 @cross_origin(supports_credentials=True)
 def start_task():
     task_id = str(uuid.uuid4())
-    task_progress[task_id] = {"progress": 0, "chunks": "0"}
-    print(request)
+    task_data = {"progress": 0, "chunks": "0"}
+    redis_client.set(task_id, json.dumps(task_data))
     file = request.files["file"]
     folder = request.files.getlist("file[]")
-    progress = task_progress.get(task_id)
-    print(f"{task_id} - HELLO")
     file_data = BytesIO(file.read())  # Read file content into memory
     folder_data = [BytesIO(f.read()) for f in folder]  # Read each folder file content
 
@@ -1253,7 +1286,8 @@ def start_task():
 
 @app.route("/progress/<task_id>", methods=["GET"])
 def get_progress(task_id):
-    data = task_progress.get(task_id)
+    progress_data = redis_client.get(task_id)
+    data = json.loads(progress_data)
     app.logger.info(f"progress: ${data}")
     return jsonify(data)
 
