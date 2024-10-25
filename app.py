@@ -28,10 +28,10 @@ pd.options.mode.chained_assignment = None  # default='warn'
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = os.urandom(28)
-app.config["HOSTNAME"] = os.getenv["FLASK_HOSTNAME"]
-app.config["USERNAME"] = os.getenv["FLASK_USERNAME"]
-app.config["PASSWORD"] = os.getenv["FLASK_PASSWORD"]
-app.config["GSHEETSKEY"] = os.getenv["FLASK_GSHEETS_KEY"]
+app.config["HOSTNAME"] = os.getenv["hostname"]
+app.config["USERNAME"] = os.getenv["username"]
+app.config["PASSWORD"] = os.getenv["password"]
+app.config["GSHEETSKEY"] = os.getenv["gsheetskey"]
 app.config["ca_auth_token"] = os.getenv["ca_auth_token"]
 app.config["ca_refresh_token"] = os.getenv["ca_refresh_token"]
 app.config["redis_password"] = os.getenv["redis_password"]
