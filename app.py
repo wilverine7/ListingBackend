@@ -1254,7 +1254,7 @@ def start_task():
 @app.route("/progress/<task_id>", methods=["GET"])
 def get_progress(task_id):
     data = task_progress.get(task_id)
-    print(data)
+    app.logger.info(f"progress: ${data}")
     return jsonify(data)
 
 
