@@ -650,29 +650,29 @@ def ImageCsv(task_id, file, folder):
                         columnIdentifier = "SKU"
                         uniqueCombo = chunk["SKU"].unique()
 
-                        totalUploaded = 0
-                        totalImages = (
-                            chunk[
-                                [
-                                    "IMAGE_1",
-                                    "IMAGE_2",
-                                    "IMAGE_3",
-                                    "IMAGE_4",
-                                    "IMAGE_5",
-                                    "IMAGE_6",
-                                    "IMAGE_7",
-                                    "IMAGE_8",
-                                    "IMAGE_9",
-                                ]
+                    totalUploaded = 0
+                    totalImages = (
+                        chunk[
+                            [
+                                "IMAGE_1",
+                                "IMAGE_2",
+                                "IMAGE_3",
+                                "IMAGE_4",
+                                "IMAGE_5",
+                                "IMAGE_6",
+                                "IMAGE_7",
+                                "IMAGE_8",
+                                "IMAGE_9",
                             ]
-                            .nunique()
-                            .sum()
-                        )
-                        print(f"total images: {totalImages}")
-                        task_progress[task_id] = {
-                            "progress": totalUploaded / totalImages,
-                            "chunks": f"{i+1}/{num_chunks}",
-                        }
+                        ]
+                        .nunique()
+                        .sum()
+                    )
+                    print(f"total images: {totalImages}")
+                    task_progress[task_id] = {
+                        "progress": totalUploaded / totalImages,
+                        "chunks": f"{i+1}/{num_chunks}",
+                    }
                 else:
                     uniqueCombo = chunk["SKU"].unique()
                     totalUploaded = 0
@@ -1108,7 +1108,6 @@ def ImageCsv(task_id, file, folder):
                     csv_buffer.seek(0)
 
                     dfJson = chunk.to_json(orient="index")
-                    print(dfJson)
                 except Exception as e:
                     app.logger.error(f"ERROR: {e}")
                     print(f"Error: {str(e)}")
