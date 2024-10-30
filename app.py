@@ -21,7 +21,9 @@ import time
 import threading
 import uuid
 import redis
+from dotenv import load_dotenv
 
+load_dotenv()
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -36,6 +38,7 @@ app.config["ca_auth_token"] = os.getenv("ca_auth_token")
 app.config["ca_refresh_token"] = os.getenv("ca_refresh_token")
 app.config["redis_password"] = os.getenv("redis_password")
 
+print(app.config["SECRET_KEY"])
 # import credentials
 
 # app.config["HOSTNAME"] = credentials.hostname

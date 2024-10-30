@@ -7,3 +7,4 @@ credentials.py
 requirements2.txt
 DebugLogs.log
 app.log
+.env
