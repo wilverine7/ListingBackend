@@ -35,6 +35,7 @@ app.config["GSHEETSKEY"] = os.getenv("gsheetskey")
 app.config["ca_auth_token"] = os.getenv("ca_auth_token")
 app.config["ca_refresh_token"] = os.getenv("ca_refresh_token")
 app.config["redis_password"] = os.getenv("redis_password")
+print(app.config["redis_password"])
 
 # import credentials
 
