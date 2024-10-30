@@ -1272,6 +1272,7 @@ def getImageCsv():
 @app.route("/ImageCsv", methods=["GET", "POST"])
 @cross_origin(supports_credentials=True)
 def start_task():
+    app.logger.info(app.config["redis_password"])
     task_id = str(uuid.uuid4())
     task_data = {"progress": 0, "chunks": "0"}
     redis_client.set(task_id, json.dumps(task_data))
