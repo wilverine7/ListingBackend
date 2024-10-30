@@ -1273,7 +1273,7 @@ def getImageCsv():
 @cross_origin(supports_credentials=True)
 def start_task():
     app.logger.info(f"redis password: {app.config['redis_password']}")
-    app.logger.info(f"hostname: {app.config["HOSTNAME"]}")
+    app.logger.info(f"hostname: {app.config['HOSTNAME']}")
     task_id = str(uuid.uuid4())
     task_data = {"progress": 0, "chunks": "0"}
     redis_client.set(task_id, json.dumps(task_data))
