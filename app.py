@@ -35,7 +35,6 @@ app.config["GSHEETSKEY"] = os.getenv("gsheetskey")
 app.config["ca_auth_token"] = os.getenv("ca_auth_token")
 app.config["ca_refresh_token"] = os.getenv("ca_refresh_token")
 app.config["redis_password"] = os.getenv("redis_password")
-print(app.config["redis_password"])
 
 # import credentials
 
@@ -51,7 +50,7 @@ CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
 # Configure Redis connection
 redis_client = redis.Redis(
-    host="localhost", port=6379, password=app.config["redis_password"]
+    host="127.0.0.1", port=6379, password=app.config["redis_password"]
 )
 
 
