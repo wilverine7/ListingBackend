@@ -8,3 +8,4 @@ requirements2.txt
 DebugLogs.log
 app.log
 .env
+requirements.txt
