@@ -1237,7 +1237,12 @@ def getImageCsv():
                     )
                     break
             # combined_df.reset_index(drop=True, inplace=True)
-            combined_df.set_index("SKU", inplace=True)
+            if "SKU" in combined_df.columns:
+                combined_df.set_index("SKU", inplace=True)
+            else:
+                print(combined_df)
+                combined_df.set_index("INVENTORY_NUMBER", inplace=True)
+
             dfJson = combined_df.to_json(orient="index")
             res["df"] = dfJson
             if (
@@ -1623,7 +1628,7 @@ def filePackageBuilder(task_id, file, folder):
     df.columns = df.columns.str.replace(" ", "_")
     df.dropna(subset=["MAIN_IMAGE_URL"], inplace=True)
     if df["BOOT_IMAGE_URL"].count() == 0 and df["BINDING_IMAGE_URL"].count() == 0:
-        test = fn.singleSkiFileBuilder(task_id, df, app, folder)
+        test = singleSkiFileBuilder(task_id, df, app, folder)
         return test
 
     df = df[df["VARIATION_PARENT_SKU"] != "Parent"]
@@ -1641,6 +1646,8 @@ def filePackageBuilder(task_id, file, folder):
     columns = []
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
+    totalUploaded = 0
+    totalImages = df.shape[0]
 
     try:
         with pysftp.Connection(
@@ -1737,6 +1744,7 @@ def filePackageBuilder(task_id, file, folder):
                         df["VARIATION_PARENT_SKU"] == combo,
                         "Server Image 1",
                     ] = BikeWagonUrl
+                    totalUploaded += 1
 
                     # add the first image to the urlList that is used to download the csv
                     urlList = BikeWagonUrl
@@ -1761,6 +1769,7 @@ def filePackageBuilder(task_id, file, folder):
                         df["VARIATION_PARENT_SKU"] == combo,
                         "Server Image 2",
                     ] = BikeWagonUrl
+                    totalUploaded += 1
 
                     urlList = urlList + "," + BikeWagonUrl
 
@@ -1786,6 +1795,7 @@ def filePackageBuilder(task_id, file, folder):
                             df["VARIATION_PARENT_SKU"] == combo,
                             "Server Image 3",
                         ] = BikeWagonUrl
+                        totalUploaded += 1
 
                         urlList = urlList + "," + BikeWagonUrl
 
@@ -1812,6 +1822,7 @@ def filePackageBuilder(task_id, file, folder):
                             df["VARIATION_PARENT_SKU"] == combo,
                             "Server Image 4",
                         ] = BikeWagonUrl
+                        totalUploaded += 1
 
                         urlList = urlList + "," + BikeWagonUrl
                     else:
@@ -1840,6 +1851,8 @@ def filePackageBuilder(task_id, file, folder):
                                 "Server Image 3",
                             ] = BikeWagonUrl
 
+                            totalUploaded += 1
+
                             urlList = urlList + "," + BikeWagonUrl
 
                         elif binding != "":
@@ -1866,11 +1879,22 @@ def filePackageBuilder(task_id, file, folder):
                                 df["VARIATION_PARENT_SKU"] == combo,
                                 "Server Image 3",
                             ] = BikeWagonUrl
+                            totalUploaded += 1
 
                             urlList = urlList + "," + BikeWagonUrl
 
                     df.loc[df["VARIATION_PARENT_SKU"] == combo, "Picture URLs"] = (
                         urlList
+                    )
+                    progress = totalUploaded / totalImages
+                    print(totalUploaded)
+                    if progress == 1:
+                        progress = 0.99
+                    print(progress)
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=progress,
                     )
             except Exception as e:
                 error = "Error creating package"
@@ -1907,10 +1931,13 @@ def filePackageBuilder(task_id, file, folder):
                 if sftp.exists("uploadedFiles") == False:
                     # create new directory at public_html/media/L9/ with the folder_name variable
                     sftp.mkdir("uploadedFiles")
-                app.logger.info("Created new folder")
-                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
+                    app.logger.info("Created new folder")
+                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_1.csv")
     except:
         print("error")
+
+    update_task_field(task_id=task_id, field="progress", value=1)
+    return
 
 
 def removeBackground(image):
@@ -2309,28 +2336,147 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
     return (error, response.text)
 
 
-def singleSkiFileBuilder(task_id, df, app, folder):
-    from flask import Flask, request, Response, jsonify
-    import pandas as pd
-    from flask_cors import CORS, cross_origin
-    from datetime import datetime
-    import os
-    import json
-    from datetime import datetime
-    from io import BytesIO
-    import functions as fn
-    import requests
-    import pysftp
-    from PIL import Image
-    from openpyxl.workbook import Workbook
-    from openpyxl.utils.dataframe import dataframe_to_rows
-    from flask_api import status
-    from openpyxl.worksheet.datavalidation import DataValidation
-    import gspread
-    import logging
-    import sys
-    import time
+# def singleSkiFileBuilder(task_id, df, app, folder):
+#     from flask import Flask, request, Response, jsonify
+#     import pandas as pd
+#     from flask_cors import CORS, cross_origin
+#     from datetime import datetime
+#     import os
+#     import json
+#     from datetime import datetime
+#     from io import BytesIO
+#     import functions as fn
+#     import requests
+#     import pysftp
+#     from PIL import Image
+#     from openpyxl.workbook import Workbook
+#     from openpyxl.utils.dataframe import dataframe_to_rows
+#     from flask_api import status
+#     from openpyxl.worksheet.datavalidation import DataValidation
+#     import gspread
+#     import logging
+#     import sys
+#     import time
 
+#     df = df[df["VARIATION_PARENT_SKU"] != "Parent"]
+#     uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
+#     folder_name = datetime.today().strftime("%Y-%m-%d")
+
+#     hostname = app.config["HOSTNAME"]
+#     username = app.config["USERNAME"]
+#     password = app.config["PASSWORD"]
+
+#     columns = []
+#     cnopts = pysftp.CnOpts()
+#     cnopts.hostkeys = None
+
+#     try:
+#         with pysftp.Connection(
+#             hostname,
+#             username=username,
+#             password=password,
+#             cnopts=cnopts,
+#         ) as sftp:
+#             app.logger.info("Connected to FTP server")
+#             with sftp.cd("public_html/media/L9/"):
+#                 if sftp.exists(folder_name) == False:
+#                     # create new directory at public_html/media/L9/ with the folder_name variable
+#                     sftp.mkdir(folder_name)
+#                     app.logger.info("Created new folder")
+
+#             try:
+#                 # getting the uniqueSku problem is you download images multiple times
+#                 for combo in uniqueCombo:
+#                     comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
+#                     sku = combo
+#                     comboDf.reset_index(drop=True, inplace=True)
+#                     packageType = comboDf["SKI/BOARD"][0].upper()
+#                     if comboDf["SKI/BOARD"][0].upper() == "SKI":
+#                         packageType = "Ski"
+#                     elif comboDf["SKI/BOARD"][0].upper() == "BOARD":
+#                         packageType = "Board"
+#                     else:
+#                         error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
+#                         return (error, status.HTTP_400_BAD_REQUEST)
+#                     imagePath = comboDf["MAIN_IMAGE_URL"][0]
+#                     try:
+#                         r = requests.get(imagePath, stream=True)
+#                     except:
+#                         status_code = 500
+#                     else:
+#                         status_code = r.status_code
+#                     if status_code != 200:
+#                         # if the imagePath contains a . split the string and get everything before the .
+#                         if "." in imagePath:
+#                             fileName = imagePath.split(".")[0]
+#                             fileName = fileName.strip()
+#                         else:
+#                             fileName = imagePath
+#                             fileName = fileName.strip()
+
+#                         for file in folder:
+#                             imageName = file.filename.rsplit("/", 1)[-1]
+#                             # remove the file extenstion from the imageName
+#                             imageName = imageName.split(".")[0]
+
+#                             if imageName == fileName:
+#                                 imagePath = file
+#                     packageImage = skiBuilder(imagePath)
+
+#                     image_io = BytesIO()
+#                     packageImage.convert("RGB").save(image_io, "JPEG")
+
+#                     # Upload the image to the server
+#                     image_io.seek(0)  # Reset the file pointer to the beginning
+
+#                     imageNumber = 1
+#                     folder_name = datetime.today().strftime("%Y-%m-%d")
+#                     server_path = (
+#                         f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+#                     )
+#                     sftp.putfo(image_io, server_path)
+#                     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+#                     df.loc[
+#                         df["VARIATION_PARENT_SKU"] == combo,
+#                         "Server Image 1",
+#                     ] = BikeWagonUrl
+
+#             except Exception as e:
+#                 print(e)
+#     except Exception as e:
+#         print(e)
+#     df = df.rename(columns={"VARIATION_PARENT_SKU": "PARENT_SKU_COLOR"})
+#     df["PARENT_SKU"] = df["PARENT_SKU_COLOR"]
+#     df.dropna(subset=["Server Image 1"], inplace=True)
+
+#     df.set_index("PARENT_SKU_COLOR", inplace=True)
+#     # dfJson = df.to_json(orient="index")
+#     # ResponseData = {"df": dfJson}
+
+#     csv_bytes = df.to_csv().encode("utf-8")  # Encode CSV to bytes using UTF-8
+#     csv_buffer = BytesIO(csv_bytes)  # Wrap the bytes into a BytesIO object
+
+#     # Reset the buffer pointer to the start
+#     csv_buffer.seek(0)
+
+#     try:
+#         with pysftp.Connection(
+#             hostname,
+#             username=username,
+#             password=password,
+#             cnopts=cnopts,
+#         ) as sftp:
+#             with sftp.cd("public_html/media/L9/"):
+#                 if sftp.exists("uploadedFiles") == False:
+#                     # create new directory at public_html/media/L9/ with the folder_name variable
+#                     sftp.mkdir("uploadedFiles")
+#                 app.logger.info("Created new folder")
+#                 sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
+#     except:
+#         print("error")
+
+
+def singleSkiFileBuilder(task_id, df, app, folder):
     df = df[df["VARIATION_PARENT_SKU"] != "Parent"]
     uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
     folder_name = datetime.today().strftime("%Y-%m-%d")
@@ -2342,6 +2488,8 @@ def singleSkiFileBuilder(task_id, df, app, folder):
     columns = []
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
+    totalUploaded = 0
+    totalImages = df.shape[0]
 
     try:
         with pysftp.Connection(
@@ -2413,6 +2561,15 @@ def singleSkiFileBuilder(task_id, df, app, folder):
                         df["VARIATION_PARENT_SKU"] == combo,
                         "Server Image 1",
                     ] = BikeWagonUrl
+                    progress = totalUploaded / totalImages
+                    if progress == 1:
+                        progress = 0.99
+                    print(progress)
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=progress,
+                    )
 
             except Exception as e:
                 print(e)
@@ -2444,9 +2601,11 @@ def singleSkiFileBuilder(task_id, df, app, folder):
                     # create new directory at public_html/media/L9/ with the folder_name variable
                     sftp.mkdir("uploadedFiles")
                 app.logger.info("Created new folder")
-                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
+                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_1.csv")
     except:
         print("error")
+    update_task_field(task_id=task_id, field="progress", value=1)
+    return
 
 
 if __name__ == "__main__":
