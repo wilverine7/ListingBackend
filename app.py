@@ -21,37 +21,36 @@ import time
 import threading
 import uuid
 import redis
+from dotenv import load_dotenv
 
+load_dotenv()
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 app = Flask(__name__)
 
-# app.config["SECRET_KEY"] = os.urandom(28)
-# app.config["HOSTNAME"] = os.getenv("hostname")
-# app.config["USERNAME"] = os.getenv("username")
-# app.config["PASSWORD"] = os.getenv("password")
-# app.config["GSHEETSKEY"] = os.getenv("gsheetskey")
-# app.config["ca_auth_token"] = os.getenv("ca_auth_token")
-# app.config["ca_refresh_token"] = os.getenv("ca_refresh_token")
-# app.config["redis_password"] = os.getenv("redis_password")
-
-import credentials
-
-app.config["HOSTNAME"] = credentials.hostname
-app.config["USERNAME"] = credentials.username
-app.config["PASSWORD"] = credentials.password
-app.config["GSHEETSKEY"] = credentials.gsheetskey
-app.config["ca_auth_token"] = credentials.ca_auth_token
-app.config["ca_refresh_token"] = credentials.ca_refresh_token
-app.config["redis_password"] = ""
+app.config["SECRET_KEY"] = os.urandom(28)
+app.config["HOSTNAME"] = os.getenv("hostname")
+app.config["USERNAME"] = os.getenv("username")
+app.config["PASSWORD"] = os.getenv("password")
+app.config["GSHEETSKEY"] = os.getenv("gsheetskey")
+app.config["ca_auth_token"] = os.getenv("ca_auth_token")
+app.config["ca_refresh_token"] = os.getenv("ca_refresh_token")
+app.config["redis_password"] = os.getenv("redis_password")
+dev = os.getenv("dev")
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
-# Configure Redis connection
-redis_client = redis.Redis(
-    host="localhost", port=6379, password=app.config["redis_password"]
-)
+if dev == "False":
+    print("hello")
+    # Configure Redis connection
+    redis_client = redis.Redis(
+        host="127.0.0.1", port=6379, password=app.config["redis_password"]
+    )
+else:
+    print("world")
+    # Configure Redis connection
+    redis_client = redis.Redis(host="localhost", port=6379)
 
 
 def update_task_field(task_id, field, value):
@@ -854,25 +853,23 @@ def ImageCsv(task_id, file, folder):
                                         else:
                                             fileName = imagePath
 
-                                        for file in folder:
+                                        for filename, byte_data in folder.items():
                                             if (
-                                                file.filename.endswith(".jpg")
-                                                or file.filename.endswith(".png")
-                                                or file.filename.endswith(".jpeg")
-                                                or file.filename.endswith(".webp")
-                                                or file.filename.endswith(".JPG")
-                                                or file.filename.endswith(".JPEG")
-                                                or file.filename.endswith(".PNG")
-                                                or file.filename.endswith(".WEBP")
+                                                filename.endswith(".jpg")
+                                                or filename.endswith(".png")
+                                                or filename.endswith(".jpeg")
+                                                or filename.endswith(".webp")
+                                                or filename.endswith(".JPG")
+                                                or filename.endswith(".JPEG")
+                                                or filename.endswith(".PNG")
+                                                or filename.endswith(".WEBP")
                                             ):
-                                                imageName = file.filename.rsplit(
-                                                    "/", 1
-                                                )[-1]
+                                                imageName = filename.rsplit("/", 1)[-1]
                                                 # remove the file extenstion from the imageName
                                                 imageName = imageName.split(".")[0]
 
                                                 if imageName == fileName:
-                                                    imagePath = file
+                                                    imagePath = byte_data
                                         server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
                                         try:
                                             image = Image.open(imagePath).convert(
@@ -1019,13 +1016,13 @@ def ImageCsv(task_id, file, folder):
                                         fileName = imagePath
                                         fileName = fileName.strip()
 
-                                    for file in folder:
-                                        imageName = file.filename.rsplit("/", 1)[-1]
+                                    for filename, byte_data in folder.items():
+                                        imageName = filename.rsplit("/", 1)[-1]
                                         # remove the file extenstion from the imageName
                                         imageName = imageName.split(".")[0]
 
                                         if imageName == fileName:
-                                            imagePath = file
+                                            imagePath = byte_data
                                     server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
                                     try:
                                         image = Image.open(imagePath).convert("RGBA")
@@ -1277,8 +1274,13 @@ def start_task():
     redis_client.set(task_id, json.dumps(task_data))
     file = request.files["file"]
     folder = request.files.getlist("file[]")
+    folder_data = {file.filename: BytesIO(file.read()) for file in folder}
+
+    # Example: Print filenames and their byte size
+    for filename, byte_data in folder_data.items():
+        print(f"Filename: {filename}, Size: {len(byte_data.getvalue())} bytes")
+
     file_data = BytesIO(file.read())  # Read file content into memory
-    folder_data = [BytesIO(f.read()) for f in folder]  # Read each folder file content
 
     threading.Thread(target=ImageCsv, args=(task_id, file_data, folder_data)).start()
     return jsonify({"task_id": task_id})
