@@ -42,7 +42,7 @@ dev = os.getenv("dev")
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
-if dev == False:
+if dev == "False":
     print("hello")
     # Configure Redis connection
     redis_client = redis.Redis(
