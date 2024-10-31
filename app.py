@@ -1672,7 +1672,10 @@ def filePackageBuilder(task_id, file, folder):
                     packageType = comboDf["SKI/BOARD"][0].upper()
                     if comboDf["SKI/BOARD"][0].upper() == "SKI":
                         packageType = "Ski"
-                    elif comboDf["SKI/BOARD"][0].upper() == "BOARD":
+                    elif (
+                        comboDf["SKI/BOARD"][0].upper() == "BOARD"
+                        or comboDf["SKI/BOARD"][0].upper() == "SNOWBOARD"
+                    ):
                         packageType = "Board"
                     else:
                         error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
@@ -1698,6 +1701,7 @@ def filePackageBuilder(task_id, file, folder):
                         and comboDf["BINDING_IMAGE_URL"].count() == 0
                     ):
                         total = 2
+                        binding=""
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         boot = comboDf["BOOT_IMAGE_URL"][0]
                         if packageType == "Ski":
@@ -1709,6 +1713,7 @@ def filePackageBuilder(task_id, file, folder):
                         and comboDf["BINDING_IMAGE_URL"].count() > 0
                     ):
                         total = 2
+                        boot =""
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         binding = comboDf["BINDING_IMAGE_URL"][0]
                         if packageType == "Ski":
