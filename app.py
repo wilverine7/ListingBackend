@@ -37,24 +37,21 @@ app.config["GSHEETSKEY"] = os.getenv("gsheetskey")
 app.config["ca_auth_token"] = os.getenv("ca_auth_token")
 app.config["ca_refresh_token"] = os.getenv("ca_refresh_token")
 app.config["redis_password"] = os.getenv("redis_password")
+dev = os.getenv("dev")
 
-print(app.config["SECRET_KEY"])
-# import credentials
-
-# app.config["HOSTNAME"] = credentials.hostname
-# app.config["USERNAME"] = credentials.username
-# app.config["PASSWORD"] = credentials.password
-# app.config["GSHEETSKEY"] = credentials.gsheetskey
-# app.config["ca_auth_token"] = credentials.ca_auth_token
-# app.config["ca_refresh_token"] = credentials.ca_refresh_token
-# app.config["redis_password"] = ''
 
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
-# Configure Redis connection
-redis_client = redis.Redis(
-    host="127.0.0.1", port=6379, password=app.config["redis_password"]
-)
+if dev == True:
+    print("hello")
+    # Configure Redis connection
+    redis_client = redis.Redis(
+        host="127.0.0.1", port=6379, password=app.config["redis_password"]
+    )
+else:
+    print("world")
+    # Configure Redis connection
+    redis_client = redis.Redis(host="localhost", port=6379)
 
 
 def update_task_field(task_id, field, value):
