@@ -394,7 +394,7 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
     return (error, response.text)
 
 
-def singleSkiFileBuilder(df, app, folder):
+def singleSkiFileBuilder(task_id, df, app, folder):
     from flask import Flask, request, Response, jsonify
     import pandas as pd
     from flask_cors import CORS, cross_origin
@@ -508,6 +508,27 @@ def singleSkiFileBuilder(df, app, folder):
     df.dropna(subset=["Server Image 1"], inplace=True)
 
     df.set_index("PARENT_SKU_COLOR", inplace=True)
-    dfJson = df.to_json(orient="index")
-    ResponseData = {"df": dfJson}
-    return ResponseData
+    # dfJson = df.to_json(orient="index")
+    # ResponseData = {"df": dfJson}
+
+    csv_bytes = df.to_csv().encode("utf-8")  # Encode CSV to bytes using UTF-8
+    csv_buffer = BytesIO(csv_bytes)  # Wrap the bytes into a BytesIO object
+
+    # Reset the buffer pointer to the start
+    csv_buffer.seek(0)
+
+    try:
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists("uploadedFiles") == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir("uploadedFiles")
+                app.logger.info("Created new folder")
+                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
+    except:
+        print("error")
