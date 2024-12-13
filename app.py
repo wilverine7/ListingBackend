@@ -1,4 +1,4 @@
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify, send_from_directory
 import pandas as pd
 from flask_cors import CORS, cross_origin
 from datetime import datetime
@@ -1701,7 +1701,7 @@ def filePackageBuilder(task_id, file, folder):
                         and comboDf["BINDING_IMAGE_URL"].count() == 0
                     ):
                         total = 2
-                        binding=""
+                        binding = ""
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         boot = comboDf["BOOT_IMAGE_URL"][0]
                         if packageType == "Ski":
@@ -1713,7 +1713,7 @@ def filePackageBuilder(task_id, file, folder):
                         and comboDf["BINDING_IMAGE_URL"].count() > 0
                     ):
                         total = 2
-                        boot =""
+                        boot = ""
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         binding = comboDf["BINDING_IMAGE_URL"][0]
                         if packageType == "Ski":
@@ -2611,6 +2611,15 @@ def singleSkiFileBuilder(task_id, df, app, folder):
         print("error")
     update_task_field(task_id=task_id, field="progress", value=1)
     return
+
+
+# Set the path to the folder where the images are stored
+image_folder = os.path.join(app.root_path, "static", "images")
+
+
+@app.route("/images/<filename>")
+def serve_image(filename):
+    return send_from_directory(image_folder, filename)
 
 
 if __name__ == "__main__":

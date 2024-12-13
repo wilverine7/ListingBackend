@@ -9,3 +9,4 @@ DebugLogs.log
 app.log
 .env
 requirements.txt
+static/images/*
