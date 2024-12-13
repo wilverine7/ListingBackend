@@ -2617,7 +2617,7 @@ def singleSkiFileBuilder(task_id, df, app, folder):
 image_folder = os.path.join(app.root_path, "static", "images")
 
 
-@app.route("/images/<filename>")
+@app.route("/images/<path:filename>")
 def serve_image(filename):
     return send_from_directory(image_folder, filename)
 
