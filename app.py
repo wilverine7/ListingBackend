@@ -2613,8 +2613,5 @@ def singleSkiFileBuilder(task_id, df, app, folder):
     return
 
 
-# Set the path to the folder where the images are stored
-image_folder = os.path.join(app.root_path, "static", "images")
-
 if __name__ == "__main__":
     app.run()
