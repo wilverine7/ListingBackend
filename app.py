@@ -455,85 +455,69 @@ def UrlUpload():
 
     folder_name = datetime.today().strftime("%Y-%m-%d")
     # creates a variable to pass to the html page to display the image and url
-    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-    server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{imageName}.jpg"
+    server_path = f"/var/www/images/media/L9/{folder_name}/{imageName}.jpg"
+    server_dir = f"/var/www/images/media/L9/{folder_name}"
 
-    hostname = app.config["HOSTNAME"]
-    username = app.config["USERNAME"]
-    password = app.config["PASSWORD"]
-    cnopts = pysftp.CnOpts()
-    cnopts.hostkeys = None
+    if os.path.isfile(server_path) and flag == False:
+        flag = True
+        error = "Duplicate Image. Would you like to overwrite the image?"
+        # displayImage = (
+        #     f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+        # )
+        data = {
+            "error": error,
+            "flag": flag,
+            "displayImage": BikeWagonUrl,
+        }
+        return data
+    else:
+        if not os.path.exists(server_dir):
+            os.makedirs(server_dir)
+    if imagePath == "":
+        # handle the file upload
+        image = Image.open(imageFile).convert("RGBA")
+        if remBg:
+            image_io = fn.removeBackground(image)
+        else:
+            image_io = fn.process_image(image)
 
-    with pysftp.Connection(
-        hostname, username=username, password=password, cnopts=cnopts
-    ) as sftp:
-        print("Connection succesful")
-        app.logger.info("Connection succesful")
-        if sftp.exists(server_path) and flag == False:
-            flag = True
-            error = "Duplicate Image. Would you like to overwrite the image?"
-            displayImage = (
-                f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-            )
-            data = {
-                "error": error,
-                "flag": flag,
-                "displayImage": displayImage,
+        # Now save the file
+        with open(server_path, "wb") as f:
+            f.write(image_io.getvalue())
+
+        data = {"displayImage": BikeWagonUrl, "flag": False}
+        return data, 200
+    else:
+        # handle the url upload
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
             }
-            return data
-        else:
-            with sftp.cd("public_html/media/L9/"):
-                if sftp.exists(folder_name):
-                    pass
-                else:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
-                    sftp.mkdir(folder_name)
-        if imagePath == "":
-            # handle the file upload
-            image = Image.open(imageFile).convert("RGBA")
+            # open the image from the url
+            response = requests.get(imagePath, stream=True, headers=headers)
+            # if the user wants to remove background it processes here.
             if remBg:
+                image = Image.open(BytesIO(response.content))
                 image_io = fn.removeBackground(image)
+
             else:
+                image = Image.open(BytesIO(response.content)).convert("RGBA")
+                # process the image by passing PIL image to the function
                 image_io = fn.process_image(image)
+            # Now save the file
+            with open(server_path, "wb") as f:
+                f.write(image_io.getvalue())
 
-            sftp.putfo(image_io, server_path)
-            # close connection
-            sftp.close()
-            print("Connection closed")
             data = {"displayImage": BikeWagonUrl, "flag": False}
+
             return data, 200
-        else:
-            # handle the url upload
-            try:
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
-                }
-                # open the image from the url
-                response = requests.get(imagePath, stream=True, headers=headers)
-                # if the user wants to remove background it processes here.
-                if remBg:
-                    image = Image.open(BytesIO(response.content))
-                    image_io = fn.removeBackground(image)
-
-                else:
-                    image = Image.open(BytesIO(response.content)).convert("RGBA")
-                    # process the image by passing PIL image to the function
-                    image_io = fn.process_image(image)
-                sftp.putfo(image_io, server_path)
-
-                # close connection
-                sftp.close()
-                print("Connection closed")
-                data = {"displayImage": BikeWagonUrl, "flag": False}
-
-                return data, 200
-            except:
-                error = "Invalid URL"
-                # if the image wouldn't open then the url is invalid
-                json = {"error": error}
-                app.logger.error(f"Invalid URL: {error}")
-                return json
+        except:
+            error = "Invalid URL"
+            # if the image wouldn't open then the url is invalid
+            json = {"error": error}
+            app.logger.error(f"Invalid URL: {error}")
+            return json
 
 
 @app.route("/CaUpload", methods=["POST"])
