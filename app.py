@@ -1125,13 +1125,6 @@ def ImageCsv(task_id, file, folder):
         with open(f"{uploadedFilesPath}/{task_id}_{i+1}.csv", "wb") as f:
             f.write(csv_buffer.getvalue())
 
-        # with sftp.cd("/var/www/images/media/L9/"):
-        #     if sftp.exists("uploadedFiles") == False:
-        #         # create new directory at /var/www/images/media/L9/ with the folder_name variable
-        #         sftp.mkdir("uploadedFiles")
-        #         app.logger.info("Created new folder")
-        #     sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_{i+1}.csv")
-
         # return jsonify(ResponseData)
 
     if BrokenUrlDict == {}:
@@ -1374,19 +1367,9 @@ def DeleteImage():
     print(file)
 
     server_path = f"/var/www/images/media{file}"
-    hostname = app.config["HOSTNAME"]
-    username = app.config["USERNAME"]
-    password = app.config["PASSWORD"]
-
-    cnopts = pysftp.CnOpts()
-    cnopts.hostkeys = None
 
     try:
-        with pysftp.Connection(
-            hostname, username=username, password=password, cnopts=cnopts
-        ) as sftp:
-            sftp.remove(server_path)
-            sftp.close()
+        os.remove(server_path)
     except Exception as e:
         app.logger.error(f"ERROR: {e}")
         print(f"Error: {str(e)}")
@@ -1402,19 +1385,9 @@ def DeleteSingleImage():
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
     server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-    hostname = app.config["HOSTNAME"]
-    username = app.config["USERNAME"]
-    password = app.config["PASSWORD"]
-
-    cnopts = pysftp.CnOpts()
-    cnopts.hostkeys = None
 
     try:
-        with pysftp.Connection(
-            hostname, username=username, password=password, cnopts=cnopts
-        ) as sftp:
-            sftp.remove(server_path)
-            sftp.close()
+        os.remove(server_path)
     except Exception as e:
         app.logger.error(f"Error: {e}")
         print(f"Error: {str(e)}")
