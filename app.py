@@ -1118,7 +1118,7 @@ def ImageCsv(task_id, file, folder):
         # this will pass the rows as objects
         # return chunk.to_json(orient="records")
 
-        uploadedFilesPath = "/var/www/images/uploadedFiles"
+        uploadedFilesPath = "/var/www/images/media/L9/uploadedFiles"
         if not os.path.exists(uploadedFilesPath):
             os.mkdir(uploadedFilesPath)
             app.logger.info("Created new folder")
@@ -1158,7 +1158,7 @@ def getImageCsv():
     res = {}
 
     try:
-        base_csv_path = f"/var/www/images/uploadedFiles/"
+        base_csv_path = f"/var/www/images/media/L9/uploadedFiles/"
         combined_df = pd.DataFrame()
         file_index = 1
         while True:
@@ -1185,7 +1185,7 @@ def getImageCsv():
 
         dfJson = combined_df.to_json(orient="index")
         res["df"] = dfJson
-        json_path = f"/var/www/images/uploadedFiles/{task_id}_broken_urls.json"
+        json_path = f"/var/www/images/media/L9/uploadedFiles/{task_id}_broken_urls.json"
         if os.path.isfile(json_path):
             try:
                 with open(json_path, "r", encoding="utf-8") as json_file:
