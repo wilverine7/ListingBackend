@@ -8,6 +8,7 @@ from datetime import datetime
 from io import BytesIO
 import functions as fn
 import requests
+import pysftp
 from PIL import Image
 from openpyxl.workbook import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
@@ -29,9 +30,9 @@ pd.options.mode.chained_assignment = None  # default='warn'
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = os.urandom(28)
-# app.config["HOSTNAME"] = os.getenv("hostname")
-# app.config["USERNAME"] = os.getenv("username")
-# app.config["PASSWORD"] = os.getenv("password")
+app.config["HOSTNAME"] = os.getenv("hostname")
+app.config["USERNAME"] = os.getenv("username")
+app.config["PASSWORD"] = os.getenv("password")
 app.config["GSHEETSKEY"] = os.getenv("gsheetskey")
 app.config["ca_auth_token"] = os.getenv("ca_auth_token")
 app.config["ca_refresh_token"] = os.getenv("ca_refresh_token")
@@ -454,69 +455,85 @@ def UrlUpload():
 
     folder_name = datetime.today().strftime("%Y-%m-%d")
     # creates a variable to pass to the html page to display the image and url
-    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{imageName}.jpg"
-    server_path = f"/var/www/images/media/L9/{folder_name}/{imageName}.jpg"
-    server_dir = f"/var/www/images/media/L9/{folder_name}"
+    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+    server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
 
-    if os.path.isfile(server_path) and flag == False:
-        flag = True
-        error = "Duplicate Image. Would you like to overwrite the image?"
-        # displayImage = (
-        #     f"https://l9golf.com/images/media/L9/{folder_name}/{imageName}.jpg"
-        # )
-        data = {
-            "error": error,
-            "flag": flag,
-            "displayImage": BikeWagonUrl,
-        }
-        return data
-    else:
-        if not os.path.exists(server_dir):
-            os.makedirs(server_dir)
-    if imagePath == "":
-        # handle the file upload
-        image = Image.open(imageFile).convert("RGBA")
-        if remBg:
-            image_io = fn.removeBackground(image)
-        else:
-            image_io = fn.process_image(image)
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
-        # Now save the file
-        with open(server_path, "wb") as f:
-            f.write(image_io.getvalue())
-
-        data = {"displayImage": BikeWagonUrl, "flag": False}
-        return data, 200
-    else:
-        # handle the url upload
-        try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+    with pysftp.Connection(
+        hostname, username=username, password=password, cnopts=cnopts
+    ) as sftp:
+        print("Connection succesful")
+        app.logger.info("Connection succesful")
+        if sftp.exists(server_path) and flag == False:
+            flag = True
+            error = "Duplicate Image. Would you like to overwrite the image?"
+            displayImage = (
+                f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+            )
+            data = {
+                "error": error,
+                "flag": flag,
+                "displayImage": displayImage,
             }
-            # open the image from the url
-            response = requests.get(imagePath, stream=True, headers=headers)
-            # if the user wants to remove background it processes here.
+            return data
+        else:
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name):
+                    pass
+                else:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+        if imagePath == "":
+            # handle the file upload
+            image = Image.open(imageFile).convert("RGBA")
             if remBg:
-                image = Image.open(BytesIO(response.content))
                 image_io = fn.removeBackground(image)
-
             else:
-                image = Image.open(BytesIO(response.content)).convert("RGBA")
-                # process the image by passing PIL image to the function
                 image_io = fn.process_image(image)
-            # Now save the file
-            with open(server_path, "wb") as f:
-                f.write(image_io.getvalue())
 
+            sftp.putfo(image_io, server_path)
+            # close connection
+            sftp.close()
+            print("Connection closed")
             data = {"displayImage": BikeWagonUrl, "flag": False}
-
             return data, 200
-        except:
-            error = "Invalid URL"
-            # if the image wouldn't open then the url is invalid
-            json = {"error": error}
-            app.logger.error(f"Invalid URL: {error}")
-            return json
+        else:
+            # handle the url upload
+            try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                }
+                # open the image from the url
+                response = requests.get(imagePath, stream=True, headers=headers)
+                # if the user wants to remove background it processes here.
+                if remBg:
+                    image = Image.open(BytesIO(response.content))
+                    image_io = fn.removeBackground(image)
+
+                else:
+                    image = Image.open(BytesIO(response.content)).convert("RGBA")
+                    # process the image by passing PIL image to the function
+                    image_io = fn.process_image(image)
+                sftp.putfo(image_io, server_path)
+
+                # close connection
+                sftp.close()
+                print("Connection closed")
+                data = {"displayImage": BikeWagonUrl, "flag": False}
+
+                return data, 200
+            except:
+                error = "Invalid URL"
+                # if the image wouldn't open then the url is invalid
+                json = {"error": error}
+                app.logger.error(f"Invalid URL: {error}")
+                return json
 
 
 @app.route("/CaUpload", methods=["POST"])
@@ -614,516 +631,544 @@ def ImageCsv(task_id, file, folder):
 
     # allows you to upload a file or url
     # doesn't require the export sheet. You can export the sourcing sheet
-    server_dir = f"/var/www/images/media/L9/{folder_name}"
 
-    for i in range(num_chunks):
-        app.logger.info(f"processing chunk {i+1}")
-        chunk = df.iloc[i * chunk_size : (i + 1) * chunk_size]
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
 
-        df_copy = chunk.dropna(axis=1, how="all")
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
-        # maxPictureCount is used to extend the df columns to the right number of images.
-        maxImageColCount = 1
+    try:
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+            for i in range(num_chunks):
+                app.logger.info(f"processing chunk {i+1}")
+                chunk = df.iloc[i * chunk_size : (i + 1) * chunk_size]
 
-        # see how many images columns there are and add one extra to avoid index out of range error
-        while f"IMAGE_{maxImageColCount}" in df_copy.columns:
-            maxImageColCount += 1
-        maxImageColCount -= 1
+                df_copy = chunk.dropna(axis=1, how="all")
 
-        columns = []
-        if columnIdentifier == "PARENT_SKU_COLOR":
-            chunk["PARENT_SKU_COLOR"] = chunk["PARENT_SKU_COLOR"].astype(str)
-            uniqueCombo = chunk["PARENT_SKU_COLOR"].unique()
-            print(uniqueCombo[0])
-            if len(uniqueCombo) == 1 and (
-                uniqueCombo[0] == "" or uniqueCombo[0] == "nan"
-            ):
-                columnIdentifier = "SKU"
-                uniqueCombo = chunk["SKU"].unique()
+                # maxPictureCount is used to extend the df columns to the right number of images.
+                maxImageColCount = 1
 
-            totalUploaded = 0
-            totalImages = (
-                chunk[
-                    [
-                        "IMAGE_1",
-                        "IMAGE_2",
-                        "IMAGE_3",
-                        "IMAGE_4",
-                        "IMAGE_5",
-                        "IMAGE_6",
-                        "IMAGE_7",
-                        "IMAGE_8",
-                        "IMAGE_9",
-                    ]
-                ]
-                .nunique()
-                .sum()
-            )
-            print(f"total images: {totalImages}")
-            update_task_field(
-                task_id=task_id,
-                field="progress",
-                value=(totalUploaded / totalImages),
-            )
-            update_task_field(
-                task_id=task_id, field="chunks", value=f"{i+1}/{num_chunks}"
-            )
-        else:
-            uniqueCombo = chunk["SKU"].unique()
-            totalUploaded = 0
-            totalImages = (
-                chunk[
-                    [
-                        "IMAGE_1",
-                        "IMAGE_2",
-                        "IMAGE_3",
-                        "IMAGE_4",
-                        "IMAGE_5",
-                        "IMAGE_6",
-                        "IMAGE_7",
-                        "IMAGE_8",
-                        "IMAGE_9",
-                    ]
-                ]
-                .count()
-                .sum()
-            )
-            print(f"total images: {totalImages}")
-            update_task_field(
-                task_id=task_id,
-                field="progress",
-                value=(totalUploaded / totalImages),
-            )
-            update_task_field(
-                task_id=task_id, field="chunks", value=f"{i+1}/{num_chunks}"
-            )
+                # see how many images columns there are and add one extra to avoid index out of range error
+                while f"IMAGE_{maxImageColCount}" in df_copy.columns:
+                    maxImageColCount += 1
+                maxImageColCount -= 1
 
-        if not os.path.exists(server_dir):
-            os.makedirs(server_dir)
-            app.logger.info("Created new folder")
-        try:
-            # getting the uniqueSku problem is you download images multiple times
-            for combo in uniqueCombo:
-                app.logger.debug(f"Processing combo: {combo}")
-                urlList = ""
+                columns = []
+                if columnIdentifier == "PARENT_SKU_COLOR":
+                    chunk["PARENT_SKU_COLOR"] = chunk["PARENT_SKU_COLOR"].astype(str)
+                    uniqueCombo = chunk["PARENT_SKU_COLOR"].unique()
+                    print(uniqueCombo[0])
+                    if len(uniqueCombo) == 1 and (
+                        uniqueCombo[0] == "" or uniqueCombo[0] == "nan"
+                    ):
+                        columnIdentifier = "SKU"
+                        uniqueCombo = chunk["SKU"].unique()
 
-                # x keeps track of the number of images for each parent SKU color combo
-                x = 1
-                # CaDf.append([{"Inventory Number": sku}])
-                dfCombo = chunk[chunk[columnIdentifier] == combo]
+                    totalUploaded = 0
+                    totalImages = (
+                        chunk[
+                            [
+                                "IMAGE_1",
+                                "IMAGE_2",
+                                "IMAGE_3",
+                                "IMAGE_4",
+                                "IMAGE_5",
+                                "IMAGE_6",
+                                "IMAGE_7",
+                                "IMAGE_8",
+                                "IMAGE_9",
+                            ]
+                        ]
+                        .nunique()
+                        .sum()
+                    )
+                    print(f"total images: {totalImages}")
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=(totalUploaded / totalImages),
+                    )
+                    update_task_field(
+                        task_id=task_id, field="chunks", value=f"{i+1}/{num_chunks}"
+                    )
+                else:
+                    uniqueCombo = chunk["SKU"].unique()
+                    totalUploaded = 0
+                    totalImages = (
+                        chunk[
+                            [
+                                "IMAGE_1",
+                                "IMAGE_2",
+                                "IMAGE_3",
+                                "IMAGE_4",
+                                "IMAGE_5",
+                                "IMAGE_6",
+                                "IMAGE_7",
+                                "IMAGE_8",
+                                "IMAGE_9",
+                            ]
+                        ]
+                        .count()
+                        .sum()
+                    )
+                    print(f"total images: {totalImages}")
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=(totalUploaded / totalImages),
+                    )
+                    update_task_field(
+                        task_id=task_id, field="chunks", value=f"{i+1}/{num_chunks}"
+                    )
 
-                # if a parent_color combo has more than one unique URL in the comboDf we need to handle it differently
-                uniquePath = dfCombo[f"IMAGE_{x}"].unique()
-                # dfCombo.dropna(axis=1, inplace=True)
-                dfCombo.reset_index(drop=True, inplace=True)
-                # print(dfCombo)
-                # error catch: Could also change this to process the filtered df by Child sku and not make the user do it manually
-                # Allows there to be unique urls even if the parent sku combo is the same
+                with sftp.cd("public_html/media/L9/"):
+                    if sftp.exists(folder_name) == False:
+                        # create new directory at public_html/media/L9/ with the folder_name variable
+                        sftp.mkdir(folder_name)
+                        app.logger.info("Created new folder")
+                try:
+                    # getting the uniqueSku problem is you download images multiple times
+                    for combo in uniqueCombo:
+                        app.logger.debug(f"Processing combo: {combo}")
+                        urlList = ""
 
-                ### ASSUMPTION ####
-                # if the Image_1 url is the same for all rows of the parent sku combo then it will process them all together.
-                # if we there is a case where image 1 is the same but image 2 is different that is not handled.
-                if len(uniquePath) > 1:
-                    # this goes by SKU rather than combo so if there are multiple unique urls for a sku it will process them
-                    print(uniquePath)
-                    for unique in uniquePath:
-                        # reset to the original dfCombo
-                        dfCombo = chunk[chunk[columnIdentifier] == combo]
+                        # x keeps track of the number of images for each parent SKU color combo
                         x = 1
-                        # get each line with unique URLS
-                        dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] == unique]
+                        # CaDf.append([{"Inventory Number": sku}])
+                        dfCombo = chunk[chunk[columnIdentifier] == combo]
+
+                        # if a parent_color combo has more than one unique URL in the comboDf we need to handle it differently
+                        uniquePath = dfCombo[f"IMAGE_{x}"].unique()
+                        # dfCombo.dropna(axis=1, inplace=True)
                         dfCombo.reset_index(drop=True, inplace=True)
-                        sku = dfCombo["SKU"][0]
-                        print(dfCombo["SKU"][0])
+                        # print(dfCombo)
+                        # error catch: Could also change this to process the filtered df by Child sku and not make the user do it manually
+                        # Allows there to be unique urls even if the parent sku combo is the same
 
-                        print(dfCombo[f"IMAGE_{x}"][0])
-                        while (
-                            f"IMAGE_{x}" in dfCombo.columns
-                            and dfCombo[f"IMAGE_{x}"].count() > 0
-                        ):
-                            # if it is a url
-                            imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                            sep = "?"
-                            imageUrl = imageUrl.split(sep, 1)[0]
+                        ### ASSUMPTION ####
+                        # if the Image_1 url is the same for all rows of the parent sku combo then it will process them all together.
+                        # if we there is a case where image 1 is the same but image 2 is different that is not handled.
+                        if len(uniquePath) > 1:
+                            # this goes by SKU rather than combo so if there are multiple unique urls for a sku it will process them
+                            print(uniquePath)
+                            for unique in uniquePath:
+                                # reset to the original dfCombo
+                                dfCombo = chunk[chunk[columnIdentifier] == combo]
+                                x = 1
+                                # get each line with unique URLS
+                                dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] == unique]
+                                dfCombo.reset_index(drop=True, inplace=True)
+                                sku = dfCombo["SKU"][0]
+                                print(dfCombo["SKU"][0])
 
-                            try:
-                                print(imageUrl)
-                                r = requests.get(imageUrl, stream=True)
-                                if r.status_code != 200:
+                                print(dfCombo[f"IMAGE_{x}"][0])
+                                while (
+                                    f"IMAGE_{x}" in dfCombo.columns
+                                    and dfCombo[f"IMAGE_{x}"].count() > 0
+                                ):
+                                    # if it is a url
                                     imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                    sep = "?"
+                                    imageUrl = imageUrl.split(sep, 1)[0]
+
+                                    try:
+                                        print(imageUrl)
+                                        r = requests.get(imageUrl, stream=True)
+                                        if r.status_code != 200:
+                                            imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                        else:
+                                            requests.get(imageUrl, stream=True)
+
+                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
+
+                                        try:
+                                            headers = {
+                                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                            }
+                                            response = requests.get(
+                                                imageUrl, stream=True, headers=headers
+                                            )
+                                            image = Image.open(
+                                                BytesIO(response.content)
+                                            ).convert("RGBA")
+                                            image_io = fn.process_image(image)
+                                            sftp.putfo(image_io, server_path)
+                                            totalUploaded += 1
+                                            app.logger.info(
+                                                f"Total images uploaded: {totalUploaded}"
+                                            )
+                                            progress = totalUploaded / totalImages
+                                            if progress == 1:
+                                                progress = 0.99
+                                            update_task_field(
+                                                task_id=task_id,
+                                                field="progress",
+                                                value=progress,
+                                            )
+                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+
+                                            # adds a column with the value of the new url to the df
+                                            chunk.loc[
+                                                chunk["SKU"] == sku,
+                                                f"Server Image {x}",
+                                            ] = BikeWagonUrl
+
+                                            # adds the new column name to the list so we can get all the needed columns later
+                                            if f"Server Image {x}" not in columns:
+                                                columns.append(f"Server Image {x}")
+
+                                            # adds the url to the urlList variable so we can add it to the csv file for Channal Advisor upload
+                                            if urlList == "":
+                                                urlList = BikeWagonUrl
+                                            else:
+                                                urlList = urlList + "," + BikeWagonUrl
+
+                                        except Exception as e:
+                                            app.logger.error(f"Error: {str(e)}")
+                                            print(f"Error: {str(e)}")
+                                            if sku not in BrokenUrlDict:
+                                                BrokenUrlDict[sku] = f"IMAGE_{x}"
+                                            else:
+                                                BrokenUrlDict[sku] += f", IMAGE_{x}"
+
+                                        x += 1
+
+                                    except:
+                                        # this will be the image name in the folder that is uploaded
+                                        imagePath = dfCombo[f"IMAGE_{x}"][0]
+
+                                        # if the imagePath contains a . split the string and get everything before the .
+                                        if "." in imagePath:
+                                            fileName = imagePath.split(".")[0]
+                                            imagePath = fileName
+                                        else:
+                                            fileName = imagePath
+
+                                        for filename, byte_data in folder.items():
+                                            if (
+                                                filename.endswith(".jpg")
+                                                or filename.endswith(".png")
+                                                or filename.endswith(".jpeg")
+                                                or filename.endswith(".webp")
+                                                or filename.endswith(".JPG")
+                                                or filename.endswith(".JPEG")
+                                                or filename.endswith(".PNG")
+                                                or filename.endswith(".WEBP")
+                                            ):
+                                                imageName = filename.rsplit("/", 1)[-1]
+                                                # remove the file extenstion from the imageName
+                                                imageName = imageName.split(".")[0]
+
+                                                if imageName == fileName:
+                                                    imagePath = byte_data
+                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                        try:
+                                            image = Image.open(imagePath).convert(
+                                                "RGBA"
+                                            )
+
+                                            image_io = fn.process_image(image)
+
+                                            sftp.putfo(image_io, server_path)
+                                            totalUploaded += 1
+                                            app.logger.info(
+                                                f"Total images uploaded: {totalUploaded}"
+                                            )
+                                            progress = totalUploaded / totalImages
+                                            if progress == 1:
+                                                progress = 0.99
+                                            update_task_field(
+                                                task_id=task_id,
+                                                field="progress",
+                                                value=progress,
+                                            )
+                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                            chunk.loc[
+                                                chunk[columnIdentifier] == sku,
+                                                f"Server Image {x}",
+                                            ] = BikeWagonUrl
+                                            if f"Server Image {x}" not in columns:
+                                                columns.append(f"Server Image {x}")
+                                            if urlList == "":
+                                                urlList = BikeWagonUrl
+                                            else:
+                                                urlList = urlList + "," + BikeWagonUrl
+
+                                        except Exception as e:
+                                            app.logger.warn(
+                                                f"Error: {str(e)} -- {imagePath}"
+                                            )
+                                            print(imagePath)
+                                            print(f"Error: {str(e)}")
+                                            if sku not in BrokenUrlDict:
+                                                BrokenUrlDict[sku] = f"IMAGE_{x}"
+                                            else:
+                                                BrokenUrlDict[sku] += f", IMAGE_{x}"
+                                            print(BrokenUrlDict)
+
+                                        x += 1
+
+                        else:
+                            # this process the df using just parent so if all children have the same url it will process them
+                            while (
+                                f"IMAGE_{x}" in dfCombo.columns
+                                and dfCombo[f"IMAGE_{x}"].count() > 0
+                            ):
+                                ####### I need to fix x and make sure the variable isn't reused####
+
+                                # if the first row doesn't have an image but another row does have an image we need to use that image
+
+                                # if it is a url
+                                sep = "?"
+                                imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                imageUrl = imageUrl.split(sep, 1)[0]
+                                try:
+                                    r = requests.get(imageUrl, stream=True)
+                                except:
+                                    status_code = 500
                                 else:
-                                    requests.get(imageUrl, stream=True)
-
-                                server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_{x}.jpg"
-
+                                    status_code = r.status_code
+                                if status_code != 200:
+                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
+                                if imageUrl == "" or pd.isnull(imageUrl):
+                                    dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
+                                    dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
+                                    dfCombo.reset_index(drop=True, inplace=True)
+                                    imageUrl = dfCombo[f"IMAGE_{x}"][0]
                                 try:
                                     headers = {
                                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                        # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
                                     }
                                     response = requests.get(
                                         imageUrl, stream=True, headers=headers
                                     )
-                                    image = Image.open(
-                                        BytesIO(response.content)
-                                    ).convert("RGBA")
-                                    image_io = fn.process_image(image)
-                                    with open(server_path, "wb") as f:
-                                        f.write(image_io.getvalue())
-                                    totalUploaded += 1
-                                    app.logger.info(
-                                        f"Total images uploaded: {totalUploaded}"
+                                except:
+                                    # this is a broken url so we don't get a response on purpose
+                                    response = requests.get(
+                                        "https://bikewagonmedia.com/BrokenUrl",
+                                        stream=True,
                                     )
-                                    progress = totalUploaded / totalImages
-                                    if progress == 1:
-                                        progress = 0.99
-                                    update_task_field(
-                                        task_id=task_id,
-                                        field="progress",
-                                        value=progress,
-                                    )
-                                    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_{x}.jpg"
 
-                                    # adds a column with the value of the new url to the df
-                                    chunk.loc[
-                                        chunk["SKU"] == sku,
-                                        f"Server Image {x}",
-                                    ] = BikeWagonUrl
+                                server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                app.logger.info(f"{imageUrl} -- {response.status_code}")
+                                if response.status_code == 200:
+                                    try:
+                                        image = Image.open(
+                                            BytesIO(response.content)
+                                        ).convert("RGBA")
+                                        image_io = fn.process_image(image)
+                                        sftp.putfo(image_io, server_path)
+                                        totalUploaded += 1
+                                        app.logger.info(
+                                            f"Total images uploaded: {totalUploaded}"
+                                        )
+                                        progress = totalUploaded / totalImages
+                                        if progress == 1:
+                                            progress = 0.99
+                                        update_task_field(
+                                            task_id=task_id,
+                                            field="progress",
+                                            value=progress,
+                                        )
+                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        chunk.loc[
+                                            chunk[columnIdentifier] == combo,
+                                            f"Server Image {x}",
+                                        ] = BikeWagonUrl
+                                        if f"Server Image {x}" not in columns:
+                                            columns.append(f"Server Image {x}")
+                                        if urlList == "":
+                                            urlList = BikeWagonUrl
+                                        else:
+                                            urlList = urlList + "," + BikeWagonUrl
 
-                                    # adds the new column name to the list so we can get all the needed columns later
-                                    if f"Server Image {x}" not in columns:
-                                        columns.append(f"Server Image {x}")
+                                    except Exception as e:
+                                        app.logger.error(f"Error: {str(e)}")
+                                        print(f"Error: {str(e)}")
+                                        print(imageUrl)
+                                        if combo not in BrokenUrlDict:
+                                            BrokenUrlDict[combo] = f"IMAGE_{x}"
+                                        else:
+                                            BrokenUrlDict[combo] += f", IMAGE_{x}"
+                                        print(BrokenUrlDict)
 
-                                    # adds the url to the urlList variable so we can add it to the csv file for Channal Advisor upload
-                                    if urlList == "":
-                                        urlList = BikeWagonUrl
-                                    else:
-                                        urlList = urlList + "," + BikeWagonUrl
+                                    x += 1
 
-                                except Exception as e:
-                                    app.logger.error(f"Error: {str(e)}")
-                                    print(f"Error: {str(e)}")
-                                    if sku not in BrokenUrlDict:
-                                        BrokenUrlDict[sku] = f"IMAGE_{x}"
-                                    else:
-                                        BrokenUrlDict[sku] += f", IMAGE_{x}"
-
-                                x += 1
-
-                            except:
-                                # this will be the image name in the folder that is uploaded
-                                imagePath = dfCombo[f"IMAGE_{x}"][0]
-
-                                # if the imagePath contains a . split the string and get everything before the .
-                                if "." in imagePath:
-                                    fileName = imagePath.split(".")[0]
-                                    imagePath = fileName
                                 else:
-                                    fileName = imagePath
+                                    # this will be the image name in the folder that is uploaded
+                                    imagePath = dfCombo[f"IMAGE_{x}"][0]
 
-                                for filename, byte_data in folder.items():
-                                    if (
-                                        filename.endswith(".jpg")
-                                        or filename.endswith(".png")
-                                        or filename.endswith(".jpeg")
-                                        or filename.endswith(".webp")
-                                        or filename.endswith(".JPG")
-                                        or filename.endswith(".JPEG")
-                                        or filename.endswith(".PNG")
-                                        or filename.endswith(".WEBP")
-                                    ):
+                                    # if the imagePath contains a . split the string and get everything before the .
+                                    if "." in imagePath:
+                                        fileName = imagePath.split(".")[0]
+                                        fileName = fileName.strip()
+                                    else:
+                                        fileName = imagePath
+                                        fileName = fileName.strip()
+
+                                    for filename, byte_data in folder.items():
                                         imageName = filename.rsplit("/", 1)[-1]
                                         # remove the file extenstion from the imageName
                                         imageName = imageName.split(".")[0]
 
                                         if imageName == fileName:
                                             imagePath = byte_data
-                                server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_{x}.jpg"
-                                try:
-                                    image = Image.open(imagePath).convert("RGBA")
+                                    server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                    try:
+                                        image = Image.open(imagePath).convert("RGBA")
 
-                                    image_io = fn.process_image(image)
+                                        image_io = fn.process_image(image)
 
-                                    with open(server_path, "wb") as f:
-                                        f.write(image_io.getvalue())
-                                    totalUploaded += 1
-                                    app.logger.info(
-                                        f"Total images uploaded: {totalUploaded}"
-                                    )
-                                    progress = totalUploaded / totalImages
-                                    if progress == 1:
-                                        progress = 0.99
-                                    update_task_field(
-                                        task_id=task_id,
-                                        field="progress",
-                                        value=progress,
-                                    )
-                                    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_{x}.jpg"
-                                    chunk.loc[
-                                        chunk[columnIdentifier] == sku,
-                                        f"Server Image {x}",
-                                    ] = BikeWagonUrl
-                                    if f"Server Image {x}" not in columns:
-                                        columns.append(f"Server Image {x}")
-                                    if urlList == "":
-                                        urlList = BikeWagonUrl
-                                    else:
-                                        urlList = urlList + "," + BikeWagonUrl
+                                        sftp.putfo(image_io, server_path)
+                                        totalUploaded += 1
+                                        app.logger.info(
+                                            f"Total images uploaded: {totalUploaded}"
+                                        )
+                                        progress = totalUploaded / totalImages
+                                        if progress == 1:
+                                            progress = 0.99
+                                        update_task_field(
+                                            task_id=task_id,
+                                            field="progress",
+                                            value=progress,
+                                        )
 
-                                except Exception as e:
-                                    app.logger.warn(f"Error: {str(e)} -- {imagePath}")
-                                    print(imagePath)
-                                    print(f"Error: {str(e)}")
-                                    if sku not in BrokenUrlDict:
-                                        BrokenUrlDict[sku] = f"IMAGE_{x}"
-                                    else:
-                                        BrokenUrlDict[sku] += f", IMAGE_{x}"
-                                    print(BrokenUrlDict)
+                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        chunk.loc[
+                                            chunk[columnIdentifier] == combo,
+                                            f"Server Image {x}",
+                                        ] = BikeWagonUrl
+                                        if f"Server Image {x}" not in columns:
+                                            columns.append(f"Server Image {x}")
+                                        if urlList == "":
+                                            urlList = BikeWagonUrl
+                                        else:
+                                            urlList = urlList + "," + BikeWagonUrl
 
-                                x += 1
+                                    except Exception as e:
+                                        app.logger.error(f"Error: {str(e)}")
+                                        app.logger.error(
+                                            f"There was an issue with {imagePath}"
+                                        )
+                                        print(imagePath)
+                                        print(f"Error: {str(e)}")
+                                        if combo not in BrokenUrlDict:
+                                            BrokenUrlDict[combo] = f"IMAGE_{x}"
+                                        else:
+                                            BrokenUrlDict[combo] += f", IMAGE_{x}"
+                                        print(BrokenUrlDict)
+                                    x += 1
 
-                else:
-                    # this process the df using just parent so if all children have the same url it will process them
-                    while (
-                        f"IMAGE_{x}" in dfCombo.columns
-                        and dfCombo[f"IMAGE_{x}"].count() > 0
-                    ):
-                        ####### I need to fix x and make sure the variable isn't reused####
-
-                        # if the first row doesn't have an image but another row does have an image we need to use that image
-
-                        # if it is a url
-                        sep = "?"
-                        imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                        imageUrl = imageUrl.split(sep, 1)[0]
-                        try:
-                            r = requests.get(imageUrl, stream=True)
-                        except:
-                            status_code = 500
-                        else:
-                            status_code = r.status_code
-                        if status_code != 200:
-                            imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                        if imageUrl == "" or pd.isnull(imageUrl):
-                            dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"] != ""]
-                            dfCombo = dfCombo[dfCombo[f"IMAGE_{x}"].notnull()]
-                            dfCombo.reset_index(drop=True, inplace=True)
-                            imageUrl = dfCombo[f"IMAGE_{x}"][0]
-                        try:
-                            headers = {
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
-                            }
-                            response = requests.get(
-                                imageUrl, stream=True, headers=headers
-                            )
-                        except:
-                            # this is a broken url so we don't get a response on purpose
-                            response = requests.get(
-                                "https://l9golf.com/images/BrokenUrl",
-                                stream=True,
-                            )
-
-                        server_path = (
-                            f"/var/www/images/media/L9/{folder_name}/{combo}_{x}.jpg"
+                        chunk.loc[chunk[columnIdentifier] == combo, "Picture URLs"] = (
+                            urlList
                         )
-                        app.logger.info(f"{imageUrl} -- {response.status_code}")
-                        if response.status_code == 200:
-                            try:
-                                image = Image.open(BytesIO(response.content)).convert(
-                                    "RGBA"
-                                )
-                                image_io = fn.process_image(image)
-                                with open(server_path, "wb") as f:
-                                    f.write(image_io.getvalue())
-                                totalUploaded += 1
-                                app.logger.info(
-                                    f"Total images uploaded: {totalUploaded}"
-                                )
-                                progress = totalUploaded / totalImages
-                                if progress == 1:
-                                    progress = 0.99
-                                update_task_field(
-                                    task_id=task_id,
-                                    field="progress",
-                                    value=progress,
-                                )
-                                BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{combo}_{x}.jpg"
-                                chunk.loc[
-                                    chunk[columnIdentifier] == combo,
-                                    f"Server Image {x}",
-                                ] = BikeWagonUrl
-                                if f"Server Image {x}" not in columns:
-                                    columns.append(f"Server Image {x}")
-                                if urlList == "":
-                                    urlList = BikeWagonUrl
-                                else:
-                                    urlList = urlList + "," + BikeWagonUrl
 
-                            except Exception as e:
-                                app.logger.error(f"Error: {str(e)}")
-                                print(f"Error: {str(e)}")
-                                print(imageUrl)
-                                if combo not in BrokenUrlDict:
-                                    BrokenUrlDict[combo] = f"IMAGE_{x}"
-                                else:
-                                    BrokenUrlDict[combo] += f", IMAGE_{x}"
-                                print(BrokenUrlDict)
+                except Exception as e:
+                    app.logger.error(f"ERROR: {e}")
+                    print(f"Error: {str(e)}")
+                    error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
+                    return (error, status.HTTP_400_BAD_REQUEST)
 
-                            x += 1
+                app.logger.info(f"Finished uploading images for chunk {i+1}")
 
-                        else:
-                            # this will be the image name in the folder that is uploaded
-                            imagePath = dfCombo[f"IMAGE_{x}"][0]
+                if "PARENT_SKU_COLOR" in chunk.columns:
+                    columns.extend(
+                        [
+                            "SKU",
+                            "PARENT_SKU",
+                            "PARENT_SKU_COLOR",
+                            "Picture URLs",
+                        ]
+                    )
+                elif "PARENT_SKU" in chunk.columns:
+                    columns.extend(
+                        [
+                            "SKU",
+                            "PARENT_SKU",
+                            "Picture URLs",
+                        ]
+                    )
+                else:
+                    columns.extend(
+                        [
+                            "SKU",
+                            "Picture URLs",
+                        ]
+                    )
+                # if there is a video column and it is not empty add video to the df we will return
+                if "VIDEO" in chunk.columns and chunk["VIDEO"].count() > 0:
+                    chunk["Attribute1Name"] = "VideoProduct"
+                    chunk.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
+                    columns.extend(["Attribute1Value", "Attribute1Name"])
+                if "TITLE" in chunk.columns and chunk["TITLE"].count() > 0:
+                    columns.extend(["TITLE"])
+                ServerImageColumns = []
+                x = 0
+                while x < maxImageColCount:
+                    x += 1
+                    columns.extend([f"IMAGE_{x}"])
+                    ServerImageColumns.append(f"Server Image {x}")
+                try:
+                    chunk = chunk[columns]
+                except Exception as e:
+                    app.logger.error(f"ERROR: {e}")
+                    error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum."
 
-                            # if the imagePath contains a . split the string and get everything before the .
-                            if "." in imagePath:
-                                fileName = imagePath.split(".")[0]
-                                fileName = fileName.strip()
-                            else:
-                                fileName = imagePath
-                                fileName = fileName.strip()
+                    return error, status.HTTP_400_BAD_REQUEST
 
-                            for filename, byte_data in folder.items():
-                                imageName = filename.rsplit("/", 1)[-1]
-                                # remove the file extenstion from the imageName
-                                imageName = imageName.split(".")[0]
+                # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
+                chunk = chunk.dropna(subset=ServerImageColumns, how="all")
 
-                                if imageName == fileName:
-                                    imagePath = byte_data
-                            server_path = f"/var/www/images/media/L9/{folder_name}/{combo}_{x}.jpg"
-                            try:
-                                image = Image.open(imagePath).convert("RGBA")
+                try:
+                    chunk.set_index("SKU", inplace=True)
+                    csv_bytes = chunk.to_csv().encode(
+                        "utf-8"
+                    )  # Encode CSV to bytes using UTF-8
+                    csv_buffer = BytesIO(
+                        csv_bytes
+                    )  # Wrap the bytes into a BytesIO object
 
-                                image_io = fn.process_image(image)
+                    # Reset the buffer pointer to the start
+                    csv_buffer.seek(0)
 
-                                with open(server_path, "wb") as f:
-                                    f.write(image_io.getvalue())
-                                totalUploaded += 1
-                                app.logger.info(
-                                    f"Total images uploaded: {totalUploaded}"
-                                )
-                                progress = totalUploaded / totalImages
-                                if progress == 1:
-                                    progress = 0.99
-                                update_task_field(
-                                    task_id=task_id,
-                                    field="progress",
-                                    value=progress,
-                                )
+                    dfJson = chunk.to_json(orient="index")
+                except Exception as e:
+                    app.logger.error(f"ERROR: {e}")
+                    print(f"Error: {str(e)}")
+                    error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
+                    return
 
-                                BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{combo}_{x}.jpg"
-                                chunk.loc[
-                                    chunk[columnIdentifier] == combo,
-                                    f"Server Image {x}",
-                                ] = BikeWagonUrl
-                                if f"Server Image {x}" not in columns:
-                                    columns.append(f"Server Image {x}")
-                                if urlList == "":
-                                    urlList = BikeWagonUrl
-                                else:
-                                    urlList = urlList + "," + BikeWagonUrl
+                # create a dictionary using the sku as the key and the Server Image 1 with the url as the value
 
-                            except Exception as e:
-                                app.logger.error(f"Error: {str(e)}")
-                                app.logger.error(f"There was an issue with {imagePath}")
-                                print(imagePath)
-                                print(f"Error: {str(e)}")
-                                if combo not in BrokenUrlDict:
-                                    BrokenUrlDict[combo] = f"IMAGE_{x}"
-                                else:
-                                    BrokenUrlDict[combo] += f", IMAGE_{x}"
-                                print(BrokenUrlDict)
-                            x += 1
+                # print(response.headers)
 
-                chunk.loc[chunk[columnIdentifier] == combo, "Picture URLs"] = urlList
+                # this will pass the rows as objects
+                # return chunk.to_json(orient="records")
 
-        except Exception as e:
-            app.logger.error(f"ERROR: {e}")
-            print(f"Error: {str(e)}")
-            error = f"An error occured uploading {combo}. Please check this PARENT_SKU_COLOR and try again."
-            return (error, status.HTTP_400_BAD_REQUEST)
+                with sftp.cd("public_html/media/L9/"):
+                    if sftp.exists("uploadedFiles") == False:
+                        # create new directory at public_html/media/L9/ with the folder_name variable
+                        sftp.mkdir("uploadedFiles")
+                        app.logger.info("Created new folder")
+                    sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_{i+1}.csv")
 
-        app.logger.info(f"Finished uploading images for chunk {i+1}")
-
-        if "PARENT_SKU_COLOR" in chunk.columns:
-            columns.extend(
-                [
-                    "SKU",
-                    "PARENT_SKU",
-                    "PARENT_SKU_COLOR",
-                    "Picture URLs",
-                ]
-            )
-        elif "PARENT_SKU" in chunk.columns:
-            columns.extend(
-                [
-                    "SKU",
-                    "PARENT_SKU",
-                    "Picture URLs",
-                ]
-            )
-        else:
-            columns.extend(
-                [
-                    "SKU",
-                    "Picture URLs",
-                ]
-            )
-        # if there is a video column and it is not empty add video to the df we will return
-        if "VIDEO" in chunk.columns and chunk["VIDEO"].count() > 0:
-            chunk["Attribute1Name"] = "VideoProduct"
-            chunk.rename(columns={"VIDEO": "Attribute1Value"}, inplace=True)
-            columns.extend(["Attribute1Value", "Attribute1Name"])
-        if "TITLE" in chunk.columns and chunk["TITLE"].count() > 0:
-            columns.extend(["TITLE"])
-        ServerImageColumns = []
-        x = 0
-        while x < maxImageColCount:
-            x += 1
-            columns.extend([f"IMAGE_{x}"])
-            ServerImageColumns.append(f"Server Image {x}")
-        try:
-            chunk = chunk[columns]
-        except Exception as e:
-            app.logger.error(f"ERROR: {e}")
-            error = "The uploaded CSV does not contain the correct columns. Please check for Title and SKU at the minimum."
-
-            return error, status.HTTP_400_BAD_REQUEST
-
-        # drop rows where df doesn't have an image 1 (this will get rid of skus that don't have images)
-        chunk = chunk.dropna(subset=ServerImageColumns, how="all")
-
-        try:
-            chunk.set_index("SKU", inplace=True)
-            csv_bytes = chunk.to_csv().encode(
-                "utf-8"
-            )  # Encode CSV to bytes using UTF-8
-            csv_buffer = BytesIO(csv_bytes)  # Wrap the bytes into a BytesIO object
-
-            # Reset the buffer pointer to the start
-            csv_buffer.seek(0)
-
-            dfJson = chunk.to_json(orient="index")
-        except Exception as e:
-            app.logger.error(f"ERROR: {e}")
-            print(f"Error: {str(e)}")
-            error = "The CSV either has a SKU repeated or has extra blank data. Please delete all blank rows and try again."
-            return
-
-        # create a dictionary using the sku as the key and the Server Image 1 with the url as the value
-
-        # print(response.headers)
-
-        # this will pass the rows as objects
-        # return chunk.to_json(orient="records")
-
-        uploadedFilesPath = "/var/www/images/media/L9/uploadedFiles"
-        if not os.path.exists(uploadedFilesPath):
-            os.mkdir(uploadedFilesPath)
-        with open(f"{uploadedFilesPath}/{task_id}_{i+1}.csv", "wb") as f:
-            f.write(csv_buffer.getvalue())
-
-        # return jsonify(ResponseData)
+                # return jsonify(ResponseData)
+    except Exception as e:
+        app.logger.error(f"ERROR: {e}")
+        error = f"An error occured connecting to the FTP server. Contact IT"
+        print(combo)
+        print(f"Error: {str(e)}")
+        return (error, status.HTTP_400_BAD_REQUEST)
 
     if BrokenUrlDict == {}:
         ResponseData = {"df": dfJson}
@@ -1132,11 +1177,16 @@ def ImageCsv(task_id, file, folder):
         ResponseData = {"df": dfJson, "errorDict": BrokenUrlDict}
         broken_url_json = json.dumps(BrokenUrlDict).encode("utf-8")
         json_buffer = BytesIO(broken_url_json)
-
-        with open(
-            f"/var/www/images/media/L9/uploadedFiles/{task_id}_broken_urls.json", "wb"
-        ) as f:
-            f.write(json_buffer.getvalue())
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            sftp.putfo(
+                json_buffer,
+                f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json",
+            )
     update_task_field(task_id=task_id, field="progress", value=1)
     return
 
@@ -1144,55 +1194,75 @@ def ImageCsv(task_id, file, folder):
 @app.route("/getImageCsv", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def getImageCsv():
+
     task_id = request.form["task_id"]
     print(task_id)
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
     res = {}
 
-    try:
-        base_csv_path = f"/var/www/images/media/L9/uploadedFiles/"
-        combined_df = pd.DataFrame()
-        file_index = 1
-        while True:
-            csv_path = f"{base_csv_path}{task_id}_{file_index}.csv"
-            try:
-                with open(csv_path, "rb") as file:
-                    df = pd.read_csv(file)
-                    print(df.columns)
-                    combined_df = pd.concat([combined_df, df])
-                    app.logger.info(
-                        f"CSV file for task {task_id} processed successfully"
-                    )
-                file_index += 1
-            except FileNotFoundError:
-                # Break the loop if no more files are found
-                app.logger.info(f"No more files found after {file_index - 1} files.")
-                break
-        # combined_df.reset_index(drop=True, inplace=True)
-        if "SKU" in combined_df.columns:
-            combined_df.set_index("SKU", inplace=True)
-        else:
-            print(combined_df)
-            combined_df.set_index("INVENTORY_NUMBER", inplace=True)
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
-        dfJson = combined_df.to_json(orient="index")
-        res["df"] = dfJson
-        json_path = f"/var/www/images/media/L9/uploadedFiles/{task_id}_broken_urls.json"
-        if os.path.isfile(json_path):
-            try:
-                with open(json_path, "r", encoding="utf-8") as json_file:
-                    # Read the JSON content
-                    json_data = json_file.read()  # Read the content of the file
+    try:
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+
+            base_csv_path = f"public_html/media/L9/uploadedFiles/"
+            combined_df = pd.DataFrame()
+            file_index = 1
+            while True:
+                csv_path = f"{base_csv_path}{task_id}_{file_index}.csv"
+                try:
+                    with BytesIO() as csv_buffer:
+                        sftp.getfo(csv_path, csv_buffer)
+                        csv_buffer.seek(0)  # Reset buffer position
+                        df = pd.read_csv(csv_buffer)
+                        print(df.columns)
+                        combined_df = pd.concat([combined_df, df])
+                        app.logger.info(
+                            f"CSV file for task {task_id} processed successfully"
+                        )
+                    file_index += 1
+                except FileNotFoundError:
+                    # Break the loop if no more files are found
+                    app.logger.info(
+                        f"No more files found after {file_index - 1} files."
+                    )
+                    break
+            # combined_df.reset_index(drop=True, inplace=True)
+            if "SKU" in combined_df.columns:
+                combined_df.set_index("SKU", inplace=True)
+            else:
+                print(combined_df)
+                combined_df.set_index("INVENTORY_NUMBER", inplace=True)
+
+            dfJson = combined_df.to_json(orient="index")
+            res["df"] = dfJson
+            if (
+                sftp.exists(
+                    f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json"
+                )
+                == True
+            ):
+                with BytesIO() as json_buffer:
+                    json_path = (
+                        f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json"
+                    )
+                    sftp.getfo(json_path, json_buffer)
+                    json_buffer.seek(0)
+                    json_data = json_buffer.read().decode(
+                        "utf-8"
+                    )  # Decode bytes to string
                     broken_urls_json = json.loads(json_data)  # Parse JSON string
                     res["errorDict"] = broken_urls_json
-                    app.logger.info(f"Processed broken URLs for task {task_id}")
-            except Exception as e:
-                app.logger.error(
-                    f"Error reading or parsing JSON for task {task_id}: {str(e)}"
-                )
-        else:
-            app.logger.error(
-                f"Broken URLs file not found for task {task_id} at {json_path}"
-            )
+            app.logger.info(f"Closed FTP connection for task {task_id}")
 
         return jsonify(res)
 
@@ -1364,10 +1434,20 @@ def DeleteImage():
     file = url[index_l9:]
     print(file)
 
-    server_path = f"/var/www/images/media{file}"
+    server_path = f"public_html/media{file}"
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
     try:
-        os.remove(server_path)
+        with pysftp.Connection(
+            hostname, username=username, password=password, cnopts=cnopts
+        ) as sftp:
+            sftp.remove(server_path)
+            sftp.close()
     except Exception as e:
         app.logger.error(f"ERROR: {e}")
         print(f"Error: {str(e)}")
@@ -1382,10 +1462,20 @@ def DeleteSingleImage():
     imageNumber = request.form["imageNumber"]
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
-    server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
     try:
-        os.remove(server_path)
+        with pysftp.Connection(
+            hostname, username=username, password=password, cnopts=cnopts
+        ) as sftp:
+            sftp.remove(server_path)
+            sftp.close()
     except Exception as e:
         app.logger.error(f"Error: {e}")
         print(f"Error: {str(e)}")
@@ -1442,49 +1532,65 @@ def packageBuilder():
 
     imageNumber = 1
     folder_name = datetime.today().strftime("%Y-%m-%d")
-    server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
     BikeWagonUrl = (
-        f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+        f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
     )
-    server_dir = f"/var/www/images/media/L9/{folder_name}"
+
+    # save packageImage to server
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
 
     try:
-        # if the path exists and flag is flase then we need to tell the user that this is a duplicate.
-        # if flag is true then the user already knows it is a duplicate and wants to override it
-        if os.path.isfile(server_path) and flag == False:
-            flag = True
-            error = "Duplicate Image. Would you like to overwrite the image?"
-            displayImage = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+        with pysftp.Connection(
+            hostname, username=username, password=password, cnopts=cnopts
+        ) as sftp:
+            # if the path exists and flag is flase then we need to tell the user that this is a duplicate.
+            # if flag is true then the user already knows it is a duplicate and wants to override it
+            if sftp.exists(server_path) and flag == "false":
+                flag = True
+                error = "Duplicate Image. Would you like to overwrite the image?"
+                displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                data = {
+                    "error": error,
+                    "flag": flag,
+                    "displayImage": displayImage,
+                    "imageNumber": imageNumber,
+                }
+                return data
+            # if the path exists and saveAsNew is true the user wants to add a new image and not override the old one
+            # so we need to find the next available image number for that sku
+            if sftp.exists(server_path) and saveAsNew == "true":
+                while sftp.exists(server_path):
+                    imageNumber += 1
+                    server_path = (
+                        f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    )
+                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name):
+                    pass
+                else:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+
+            sftp.putfo(image_io, server_path)
+
+            # close connection
+            sftp.close()
+            print("Connection closed")
             data = {
-                "error": error,
-                "flag": flag,
-                "displayImage": displayImage,
+                "displayImage": BikeWagonUrl,
+                "flag": False,
+                "error": False,
                 "imageNumber": imageNumber,
             }
-            return data
-        # if the path exists and saveAsNew is true the user wants to add a new image and not override the old one
-        # so we need to find the next available image number for that sku
-        if os.path.isfile(server_path) and saveAsNew == "true":
-            while os.path.isfile(server_path):
-                imageNumber += 1
-                server_path = (
-                    f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                )
-                BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-
-        if not os.path.exists(server_dir):
-            os.makedirs(server_dir)
-
-        with open(server_path, "wb") as f:
-            f.write(image_io.getvalue())
-
-        data = {
-            "displayImage": BikeWagonUrl,
-            "flag": False,
-            "error": False,
-            "imageNumber": imageNumber,
-        }
-        return data, 200
+            return data, 200
     except Exception as e:
         print(e)
 
@@ -1533,207 +1639,180 @@ def filePackageBuilder(task_id, file, folder):
 
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+
     columns = []
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
     totalUploaded = 0
     totalImages = df.shape[0]
-    server_dir = f"/var/www/images/media/L9/{folder_name}"
 
     try:
-        if not os.path.exists(server_dir):
-            os.makedirs(server_dir)
-        try:
-            # getting the uniqueSku problem is you download images multiple times
-            for combo in uniqueCombo:
-                comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
-                sku = combo
-                comboDf.reset_index(drop=True, inplace=True)
-                packageType = comboDf["SKI/BOARD"][0].upper()
-                if comboDf["SKI/BOARD"][0].upper() == "SKI":
-                    packageType = "Ski"
-                elif (
-                    comboDf["SKI/BOARD"][0].upper() == "BOARD"
-                    or comboDf["SKI/BOARD"][0].upper() == "SNOWBOARD"
-                ):
-                    packageType = "Board"
-                else:
-                    error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
-                    return (error, status.HTTP_400_BAD_REQUEST)
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name) == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+                    app.logger.info("Created new folder")
 
-                if (
-                    comboDf["BOOT_IMAGE_URL"].count() > 0
-                    and comboDf["BINDING_IMAGE_URL"].count() > 0
-                ):
-                    total = 3
-                    skiBoard = comboDf["MAIN_IMAGE_URL"][0]
-                    boot = comboDf["BOOT_IMAGE_URL"][0]
-                    binding = comboDf["BINDING_IMAGE_URL"][0]
-                    if packageType == "Ski":
-                        packageImage = fn.skiPackageBuilder(skiBoard, boot, binding)
-                    elif packageType == "Board":
-                        packageImage = fn.boardPackageBuilder(skiBoard, boot, binding)
+            try:
+                # getting the uniqueSku problem is you download images multiple times
+                for combo in uniqueCombo:
+                    comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
+                    sku = combo
+                    comboDf.reset_index(drop=True, inplace=True)
+                    packageType = comboDf["SKI/BOARD"][0].upper()
+                    if comboDf["SKI/BOARD"][0].upper() == "SKI":
+                        packageType = "Ski"
+                    elif (
+                        comboDf["SKI/BOARD"][0].upper() == "BOARD"
+                        or comboDf["SKI/BOARD"][0].upper() == "SNOWBOARD"
+                    ):
+                        packageType = "Board"
+                    else:
+                        error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
+                        return (error, status.HTTP_400_BAD_REQUEST)
 
-                elif (
-                    comboDf["BOOT_IMAGE_URL"].count() > 0
-                    and comboDf["BINDING_IMAGE_URL"].count() == 0
-                ):
-                    total = 2
-                    binding = ""
-                    skiBoard = comboDf["MAIN_IMAGE_URL"][0]
-                    boot = comboDf["BOOT_IMAGE_URL"][0]
-                    if packageType == "Ski":
-                        packageImage = fn.twoItemSkiPackageBuilder(skiBoard, boot)
-                    elif packageType == "Board":
-                        packageImage = fn.twoItemBoardPackageBuilder(skiBoard, boot)
-                elif (
-                    comboDf["BOOT_IMAGE_URL"].count() == 0
-                    and comboDf["BINDING_IMAGE_URL"].count() > 0
-                ):
-                    total = 2
-                    boot = ""
-                    skiBoard = comboDf["MAIN_IMAGE_URL"][0]
-                    binding = comboDf["BINDING_IMAGE_URL"][0]
-                    if packageType == "Ski":
-                        packageImage = fn.twoItemSkiPackageBuilder(skiBoard, binding)
-                    elif packageType == "Board":
-                        packageImage = fn.twoItemBoardPackageBuilder(skiBoard, binding)
-                elif (
-                    comboDf["BOOT_IMAGE_URL"].count() == 0
-                    and comboDf["BINDING_IMAGE_URL"].count() == 0
-                ):
-                    total = 1
-                    ski = comboDf["MAIN_IMAGE_URL"][0]
-                    packageImage = fn.singleSkiFileBuilder(ski)
+                    if (
+                        comboDf["BOOT_IMAGE_URL"].count() > 0
+                        and comboDf["BINDING_IMAGE_URL"].count() > 0
+                    ):
+                        total = 3
+                        skiBoard = comboDf["MAIN_IMAGE_URL"][0]
+                        boot = comboDf["BOOT_IMAGE_URL"][0]
+                        binding = comboDf["BINDING_IMAGE_URL"][0]
+                        if packageType == "Ski":
+                            packageImage = fn.skiPackageBuilder(skiBoard, boot, binding)
+                        elif packageType == "Board":
+                            packageImage = fn.boardPackageBuilder(
+                                skiBoard, boot, binding
+                            )
 
-                image_io = BytesIO()
-                packageImage.convert("RGB").save(image_io, "JPEG")
+                    elif (
+                        comboDf["BOOT_IMAGE_URL"].count() > 0
+                        and comboDf["BINDING_IMAGE_URL"].count() == 0
+                    ):
+                        total = 2
+                        binding=""
+                        skiBoard = comboDf["MAIN_IMAGE_URL"][0]
+                        boot = comboDf["BOOT_IMAGE_URL"][0]
+                        if packageType == "Ski":
+                            packageImage = fn.twoItemSkiPackageBuilder(skiBoard, boot)
+                        elif packageType == "Board":
+                            packageImage = fn.twoItemBoardPackageBuilder(skiBoard, boot)
+                    elif (
+                        comboDf["BOOT_IMAGE_URL"].count() == 0
+                        and comboDf["BINDING_IMAGE_URL"].count() > 0
+                    ):
+                        total = 2
+                        boot =""
+                        skiBoard = comboDf["MAIN_IMAGE_URL"][0]
+                        binding = comboDf["BINDING_IMAGE_URL"][0]
+                        if packageType == "Ski":
+                            packageImage = fn.twoItemSkiPackageBuilder(
+                                skiBoard, binding
+                            )
+                        elif packageType == "Board":
+                            packageImage = fn.twoItemBoardPackageBuilder(
+                                skiBoard, binding
+                            )
+                    elif (
+                        comboDf["BOOT_IMAGE_URL"].count() == 0
+                        and comboDf["BINDING_IMAGE_URL"].count() == 0
+                    ):
+                        total = 1
+                        ski = comboDf["MAIN_IMAGE_URL"][0]
+                        packageImage = fn.singleSkiFileBuilder(ski)
 
-                # Upload the image to the server
-                image_io.seek(0)  # Reset the file pointer to the beginning
+                    image_io = BytesIO()
+                    packageImage.convert("RGB").save(image_io, "JPEG")
 
-                imageNumber = 1
-                folder_name = datetime.today().strftime("%Y-%m-%d")
-                server_path = (
-                    f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                )
-                with open(server_path, "wb") as f:
-                    f.write(image_io.getvalue())
-                BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                df.loc[
-                    df["VARIATION_PARENT_SKU"] == combo,
-                    "Server Image 1",
-                ] = BikeWagonUrl
-                totalUploaded += 1
+                    # Upload the image to the server
+                    image_io.seek(0)  # Reset the file pointer to the beginning
 
-                # add the first image to the urlList that is used to download the csv
-                urlList = BikeWagonUrl
-
-                if skiBoard.startswith("https://l9golf.com"):
-                    BikeWagonUrl = skiBoard
-                else:
+                    imageNumber = 1
+                    folder_name = datetime.today().strftime("%Y-%m-%d")
                     server_path = (
-                        f"/var/www/images/media/L9/{folder_name}/{sku}_Img2.jpg"
+                        f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
                     )
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-                    }
-                    response = requests.get(skiBoard, stream=True, headers=headers)
-                    image = Image.open(BytesIO(response.content)).convert("RGBA")
-                    image_io = fn.process_image(image)
-                    with open(server_path, "wb") as f:
-                        f.write(image_io.getvalue())
-                    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img2.jpg"
+                    sftp.putfo(image_io, server_path)
+                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    df.loc[
+                        df["VARIATION_PARENT_SKU"] == combo,
+                        "Server Image 1",
+                    ] = BikeWagonUrl
+                    totalUploaded += 1
 
-                df.loc[
-                    df["VARIATION_PARENT_SKU"] == combo,
-                    "Server Image 2",
-                ] = BikeWagonUrl
-                totalUploaded += 1
+                    # add the first image to the urlList that is used to download the csv
+                    urlList = BikeWagonUrl
 
-                urlList = urlList + "," + BikeWagonUrl
-
-                if total == 3:
-                    if boot.startswith("https://l9golf.com"):
-                        BikeWagonUrl = boot
+                    if skiBoard.startswith("https://bikewagonmedia.com"):
+                        BikeWagonUrl = skiBoard
                     else:
                         server_path = (
-                            f"/var/www/images/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            f"public_html/media/L9/{folder_name}/{sku}_Img2.jpg"
                         )
                         headers = {
                             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                            # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
                         }
-                        response = requests.get(boot, stream=True, headers=headers)
+                        response = requests.get(skiBoard, stream=True, headers=headers)
                         image = Image.open(BytesIO(response.content)).convert("RGBA")
                         image_io = fn.process_image(image)
-                        with open(server_path, "wb") as f:
-                            f.write(image_io.getvalue())
-                        BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img3.jpg"
+                        sftp.putfo(image_io, server_path)
+                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img2.jpg"
+
                     df.loc[
                         df["VARIATION_PARENT_SKU"] == combo,
-                        "Server Image 3",
+                        "Server Image 2",
                     ] = BikeWagonUrl
                     totalUploaded += 1
 
                     urlList = urlList + "," + BikeWagonUrl
 
-                    if binding.startswith("https://l9golf.com"):
-                        BikeWagonUrl = binding
-                    else:
-                        server_path = (
-                            f"/var/www/images/media/L9/{folder_name}/{sku}_Img4.jpg"
-                        )
-                        headers = {
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-                        }
-                        response = requests.get(binding, stream=True, headers=headers)
-                        image = Image.open(BytesIO(response.content)).convert("RGBA")
-                        image_io = fn.process_image(image)
-                        with open(server_path, "wb") as f:
-                            f.write(image_io.getvalue())
-                        BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img4.jpg"
-                    df.loc[
-                        df["VARIATION_PARENT_SKU"] == combo,
-                        "Server Image 4",
-                    ] = BikeWagonUrl
-                    totalUploaded += 1
-
-                    urlList = urlList + "," + BikeWagonUrl
-                else:
-                    if boot != "":
-                        if boot.startswith("https://l9golf.com"):
+                    if total == 3:
+                        if boot.startswith("https://bikewagonmedia.com"):
                             BikeWagonUrl = boot
                         else:
                             server_path = (
-                                f"/var/www/images/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
                             )
                             headers = {
                                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
                             }
                             response = requests.get(boot, stream=True, headers=headers)
                             image = Image.open(BytesIO(response.content)).convert(
                                 "RGBA"
                             )
                             image_io = fn.process_image(image)
-                            with open(server_path, "wb") as f:
-                                f.write(image_io.getvalue())
-                            BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            sftp.putfo(image_io, server_path)
+                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
                         df.loc[
                             df["VARIATION_PARENT_SKU"] == combo,
                             "Server Image 3",
                         ] = BikeWagonUrl
-
                         totalUploaded += 1
 
                         urlList = urlList + "," + BikeWagonUrl
 
-                    elif binding != "":
-                        if binding.startswith("https://l9golf.com"):
+                        if binding.startswith("https://bikewagonmedia.com"):
                             BikeWagonUrl = binding
                         else:
                             server_path = (
-                                f"/var/www/images/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                f"public_html/media/L9/{folder_name}/{sku}_Img4.jpg"
                             )
                             headers = {
                                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
                             }
                             response = requests.get(
                                 binding, stream=True, headers=headers
@@ -1742,32 +1821,90 @@ def filePackageBuilder(task_id, file, folder):
                                 "RGBA"
                             )
                             image_io = fn.process_image(image)
-                            with open(server_path, "wb") as f:
-                                f.write(image_io.getvalue())
-                            BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            sftp.putfo(image_io, server_path)
+                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img4.jpg"
                         df.loc[
                             df["VARIATION_PARENT_SKU"] == combo,
-                            "Server Image 3",
+                            "Server Image 4",
                         ] = BikeWagonUrl
                         totalUploaded += 1
 
                         urlList = urlList + "," + BikeWagonUrl
+                    else:
+                        if boot != "":
+                            if boot.startswith("https://bikewagonmedia.com"):
+                                BikeWagonUrl = boot
+                            else:
+                                server_path = (
+                                    f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                )
+                                headers = {
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                }
+                                response = requests.get(
+                                    boot, stream=True, headers=headers
+                                )
+                                image = Image.open(BytesIO(response.content)).convert(
+                                    "RGBA"
+                                )
+                                image_io = fn.process_image(image)
+                                sftp.putfo(image_io, server_path)
+                                BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            df.loc[
+                                df["VARIATION_PARENT_SKU"] == combo,
+                                "Server Image 3",
+                            ] = BikeWagonUrl
 
-                df.loc[df["VARIATION_PARENT_SKU"] == combo, "Picture URLs"] = urlList
-                progress = totalUploaded / totalImages
-                print(totalUploaded)
-                if progress == 1:
-                    progress = 0.99
-                print(progress)
-                update_task_field(
-                    task_id=task_id,
-                    field="progress",
-                    value=progress,
-                )
-        except Exception as e:
-            error = "Error creating package"
-            print(e)
-            return error, status.HTTP_500_INTERNAL_SERVER_ERROR
+                            totalUploaded += 1
+
+                            urlList = urlList + "," + BikeWagonUrl
+
+                        elif binding != "":
+                            if binding.startswith("https://bikewagonmedia.com"):
+                                BikeWagonUrl = binding
+                            else:
+                                server_path = (
+                                    f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                )
+                                headers = {
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                                    # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
+                                }
+                                response = requests.get(
+                                    binding, stream=True, headers=headers
+                                )
+                                image = Image.open(BytesIO(response.content)).convert(
+                                    "RGBA"
+                                )
+                                image_io = fn.process_image(image)
+                                sftp.putfo(image_io, server_path)
+                                BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            df.loc[
+                                df["VARIATION_PARENT_SKU"] == combo,
+                                "Server Image 3",
+                            ] = BikeWagonUrl
+                            totalUploaded += 1
+
+                            urlList = urlList + "," + BikeWagonUrl
+
+                    df.loc[df["VARIATION_PARENT_SKU"] == combo, "Picture URLs"] = (
+                        urlList
+                    )
+                    progress = totalUploaded / totalImages
+                    print(totalUploaded)
+                    if progress == 1:
+                        progress = 0.99
+                    print(progress)
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=progress,
+                    )
+            except Exception as e:
+                error = "Error creating package"
+                print(e)
+                return error, status.HTTP_500_INTERNAL_SERVER_ERROR
     except Exception as e:
         error = "Error connecting to server"
         print(e)
@@ -1787,13 +1924,20 @@ def filePackageBuilder(task_id, file, folder):
 
     # Reset the buffer pointer to the start
     csv_buffer.seek(0)
+
     try:
-        uploadedFilesPath = "/var/www/images/media/L9/uploadedFiles"
-        if not os.path.exists(uploadedFilesPath):
-            os.mkdir(uploadedFilesPath)
-            app.logger.info("Created new folder")
-        with open(f"{uploadedFilesPath}/{task_id}_1.csv", "wb") as f:
-            f.write(csv_buffer.getvalue())
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists("uploadedFiles") == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir("uploadedFiles")
+                    app.logger.info("Created new folder")
+                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_1.csv")
     except:
         print("error")
 
@@ -2239,9 +2383,9 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
 #             cnopts=cnopts,
 #         ) as sftp:
 #             app.logger.info("Connected to FTP server")
-#             with sftp.cd("/var/www/images/media/L9/"):
+#             with sftp.cd("public_html/media/L9/"):
 #                 if sftp.exists(folder_name) == False:
-#                     # create new directory at /var/www/images/media/L9/ with the folder_name variable
+#                     # create new directory at public_html/media/L9/ with the folder_name variable
 #                     sftp.mkdir(folder_name)
 #                     app.logger.info("Created new folder")
 
@@ -2293,11 +2437,10 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
 #                     imageNumber = 1
 #                     folder_name = datetime.today().strftime("%Y-%m-%d")
 #                     server_path = (
-#                         f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+#                         f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
 #                     )
-#                     with open(server_path, "wb") as f:
-#                       f.write(image_io.getvalue())
-#                     BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+#                     sftp.putfo(image_io, server_path)
+#                     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
 #                     df.loc[
 #                         df["VARIATION_PARENT_SKU"] == combo,
 #                         "Server Image 1",
@@ -2328,9 +2471,9 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
 #             password=password,
 #             cnopts=cnopts,
 #         ) as sftp:
-#             with sftp.cd("/var/www/images/media/L9/"):
+#             with sftp.cd("public_html/media/L9/"):
 #                 if sftp.exists("uploadedFiles") == False:
-#                     # create new directory at /var/www/images/media/L9/ with the folder_name variable
+#                     # create new directory at public_html/media/L9/ with the folder_name variable
 #                     sftp.mkdir("uploadedFiles")
 #                 app.logger.info("Created new folder")
 #                 sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
@@ -2343,82 +2486,98 @@ def singleSkiFileBuilder(task_id, df, app, folder):
     uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
+    hostname = app.config["HOSTNAME"]
+    username = app.config["USERNAME"]
+    password = app.config["PASSWORD"]
+
     columns = []
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
     totalUploaded = 0
     totalImages = df.shape[0]
 
     try:
-        if not os.path.exists(f"/var/www/images/media/L9/{folder_name}"):
-            os.mkdir(f"/var/www/images/media/L9/{folder_name}")
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            app.logger.info("Connected to FTP server")
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists(folder_name) == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir(folder_name)
+                    app.logger.info("Created new folder")
 
-        try:
-            # getting the uniqueSku problem is you download images multiple times
-            for combo in uniqueCombo:
-                comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
-                sku = combo
-                comboDf.reset_index(drop=True, inplace=True)
-                packageType = comboDf["SKI/BOARD"][0].upper()
-                if comboDf["SKI/BOARD"][0].upper() == "SKI":
-                    packageType = "Ski"
-                elif comboDf["SKI/BOARD"][0].upper() == "BOARD":
-                    packageType = "Board"
-                else:
-                    error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
-                    return (error, status.HTTP_400_BAD_REQUEST)
-                imagePath = comboDf["MAIN_IMAGE_URL"][0]
-                try:
-                    r = requests.get(imagePath, stream=True)
-                except:
-                    status_code = 500
-                else:
-                    status_code = r.status_code
-                if status_code != 200:
-                    # if the imagePath contains a . split the string and get everything before the .
-                    if "." in imagePath:
-                        fileName = imagePath.split(".")[0]
-                        fileName = fileName.strip()
+            try:
+                # getting the uniqueSku problem is you download images multiple times
+                for combo in uniqueCombo:
+                    comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
+                    sku = combo
+                    comboDf.reset_index(drop=True, inplace=True)
+                    packageType = comboDf["SKI/BOARD"][0].upper()
+                    if comboDf["SKI/BOARD"][0].upper() == "SKI":
+                        packageType = "Ski"
+                    elif comboDf["SKI/BOARD"][0].upper() == "BOARD":
+                        packageType = "Board"
                     else:
-                        fileName = imagePath
-                        fileName = fileName.strip()
+                        error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
+                        return (error, status.HTTP_400_BAD_REQUEST)
+                    imagePath = comboDf["MAIN_IMAGE_URL"][0]
+                    try:
+                        r = requests.get(imagePath, stream=True)
+                    except:
+                        status_code = 500
+                    else:
+                        status_code = r.status_code
+                    if status_code != 200:
+                        # if the imagePath contains a . split the string and get everything before the .
+                        if "." in imagePath:
+                            fileName = imagePath.split(".")[0]
+                            fileName = fileName.strip()
+                        else:
+                            fileName = imagePath
+                            fileName = fileName.strip()
 
-                    for file in folder:
-                        imageName = file.filename.rsplit("/", 1)[-1]
-                        # remove the file extenstion from the imageName
-                        imageName = imageName.split(".")[0]
+                        for file in folder:
+                            imageName = file.filename.rsplit("/", 1)[-1]
+                            # remove the file extenstion from the imageName
+                            imageName = imageName.split(".")[0]
 
-                        if imageName == fileName:
-                            imagePath = file
-                packageImage = skiBuilder(imagePath)
+                            if imageName == fileName:
+                                imagePath = file
+                    packageImage = skiBuilder(imagePath)
 
-                image_io = BytesIO()
-                packageImage.convert("RGB").save(image_io, "JPEG")
+                    image_io = BytesIO()
+                    packageImage.convert("RGB").save(image_io, "JPEG")
 
-                # Upload the image to the server
-                image_io.seek(0)  # Reset the file pointer to the beginning
+                    # Upload the image to the server
+                    image_io.seek(0)  # Reset the file pointer to the beginning
 
-                imageNumber = 1
-                folder_name = datetime.today().strftime("%Y-%m-%d")
-                server_path = (
-                    f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                )
-                with open(server_path, "wb") as f:
-                    f.write(image_io.getvalue())
-                BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                df.loc[
-                    df["VARIATION_PARENT_SKU"] == combo,
-                    "Server Image 1",
-                ] = BikeWagonUrl
-                progress = totalUploaded / totalImages
-                if progress == 1:
-                    progress = 0.99
-                print(progress)
-                update_task_field(
-                    task_id=task_id,
-                    field="progress",
-                    value=progress,
-                )
-        except Exception as e:
-            print(e)
+                    imageNumber = 1
+                    folder_name = datetime.today().strftime("%Y-%m-%d")
+                    server_path = (
+                        f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    )
+                    sftp.putfo(image_io, server_path)
+                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    df.loc[
+                        df["VARIATION_PARENT_SKU"] == combo,
+                        "Server Image 1",
+                    ] = BikeWagonUrl
+                    progress = totalUploaded / totalImages
+                    if progress == 1:
+                        progress = 0.99
+                    print(progress)
+                    update_task_field(
+                        task_id=task_id,
+                        field="progress",
+                        value=progress,
+                    )
+
+            except Exception as e:
+                print(e)
     except Exception as e:
         print(e)
     df = df.rename(columns={"VARIATION_PARENT_SKU": "PARENT_SKU_COLOR"})
@@ -2436,11 +2595,18 @@ def singleSkiFileBuilder(task_id, df, app, folder):
     csv_buffer.seek(0)
 
     try:
-        uploadedFilesPath = "/var/www/images/media/L9/uploadedFiles"
-        if not os.path.exists(uploadedFilesPath):
-            os.mkdir(uploadedFilesPath)
-        with open(f"{uploadedFilesPath}/{task_id}_1.csv", "wb") as f:
-            f.write(csv_buffer.getvalue())
+        with pysftp.Connection(
+            hostname,
+            username=username,
+            password=password,
+            cnopts=cnopts,
+        ) as sftp:
+            with sftp.cd("public_html/media/L9/"):
+                if sftp.exists("uploadedFiles") == False:
+                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    sftp.mkdir("uploadedFiles")
+                app.logger.info("Created new folder")
+                sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_1.csv")
     except:
         print("error")
     update_task_field(task_id=task_id, field="progress", value=1)
