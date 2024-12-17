@@ -455,8 +455,8 @@ def UrlUpload():
 
     folder_name = datetime.today().strftime("%Y-%m-%d")
     # creates a variable to pass to the html page to display the image and url
-    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
-    server_path = f"public_html/media/L9/{folder_name}/{imageName}.jpg"
+    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{imageName}.jpg"
+    server_path = f"/var/www/images/media/L9/{folder_name}/{imageName}.jpg"
 
     hostname = app.config["HOSTNAME"]
     username = app.config["USERNAME"]
@@ -473,7 +473,7 @@ def UrlUpload():
             flag = True
             error = "Duplicate Image. Would you like to overwrite the image?"
             displayImage = (
-                f"https://bikewagonmedia.com/media/L9/{folder_name}/{imageName}.jpg"
+                f"https://l9golf.com/images/media/L9/{folder_name}/{imageName}.jpg"
             )
             data = {
                 "error": error,
@@ -482,11 +482,11 @@ def UrlUpload():
             }
             return data
         else:
-            with sftp.cd("public_html/media/L9/"):
+            with sftp.cd("/var/www/images/media/L9/"):
                 if sftp.exists(folder_name):
                     pass
                 else:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    # create new directory at /var/www/images/media/L9/ with the folder_name variable
                     sftp.mkdir(folder_name)
         if imagePath == "":
             # handle the file upload
@@ -729,9 +729,9 @@ def ImageCsv(task_id, file, folder):
                         task_id=task_id, field="chunks", value=f"{i+1}/{num_chunks}"
                     )
 
-                with sftp.cd("public_html/media/L9/"):
+                with sftp.cd("/var/www/images/media/L9/"):
                     if sftp.exists(folder_name) == False:
-                        # create new directory at public_html/media/L9/ with the folder_name variable
+                        # create new directory at /var/www/images/media/L9/ with the folder_name variable
                         sftp.mkdir(folder_name)
                         app.logger.info("Created new folder")
                 try:
@@ -787,7 +787,7 @@ def ImageCsv(task_id, file, folder):
                                         else:
                                             requests.get(imageUrl, stream=True)
 
-                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                        server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_{x}.jpg"
 
                                         try:
                                             headers = {
@@ -814,7 +814,7 @@ def ImageCsv(task_id, file, folder):
                                                 field="progress",
                                                 value=progress,
                                             )
-                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                            BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_{x}.jpg"
 
                                             # adds a column with the value of the new url to the df
                                             chunk.loc[
@@ -870,7 +870,7 @@ def ImageCsv(task_id, file, folder):
 
                                                 if imageName == fileName:
                                                     imagePath = byte_data
-                                        server_path = f"public_html/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                        server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_{x}.jpg"
                                         try:
                                             image = Image.open(imagePath).convert(
                                                 "RGBA"
@@ -891,7 +891,7 @@ def ImageCsv(task_id, file, folder):
                                                 field="progress",
                                                 value=progress,
                                             )
-                                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_{x}.jpg"
+                                            BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_{x}.jpg"
                                             chunk.loc[
                                                 chunk[columnIdentifier] == sku,
                                                 f"Server Image {x}",
@@ -959,7 +959,7 @@ def ImageCsv(task_id, file, folder):
                                         stream=True,
                                     )
 
-                                server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                server_path = f"/var/www/images/media/L9/{folder_name}/{combo}_{x}.jpg"
                                 app.logger.info(f"{imageUrl} -- {response.status_code}")
                                 if response.status_code == 200:
                                     try:
@@ -980,7 +980,7 @@ def ImageCsv(task_id, file, folder):
                                             field="progress",
                                             value=progress,
                                         )
-                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{combo}_{x}.jpg"
                                         chunk.loc[
                                             chunk[columnIdentifier] == combo,
                                             f"Server Image {x}",
@@ -1023,7 +1023,7 @@ def ImageCsv(task_id, file, folder):
 
                                         if imageName == fileName:
                                             imagePath = byte_data
-                                    server_path = f"public_html/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                    server_path = f"/var/www/images/media/L9/{folder_name}/{combo}_{x}.jpg"
                                     try:
                                         image = Image.open(imagePath).convert("RGBA")
 
@@ -1043,7 +1043,7 @@ def ImageCsv(task_id, file, folder):
                                             value=progress,
                                         )
 
-                                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{combo}_{x}.jpg"
+                                        BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{combo}_{x}.jpg"
                                         chunk.loc[
                                             chunk[columnIdentifier] == combo,
                                             f"Server Image {x}",
@@ -1155,9 +1155,9 @@ def ImageCsv(task_id, file, folder):
                 # this will pass the rows as objects
                 # return chunk.to_json(orient="records")
 
-                with sftp.cd("public_html/media/L9/"):
+                with sftp.cd("/var/www/images/media/L9/"):
                     if sftp.exists("uploadedFiles") == False:
-                        # create new directory at public_html/media/L9/ with the folder_name variable
+                        # create new directory at /var/www/images/media/L9/ with the folder_name variable
                         sftp.mkdir("uploadedFiles")
                         app.logger.info("Created new folder")
                     sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_{i+1}.csv")
@@ -1185,7 +1185,7 @@ def ImageCsv(task_id, file, folder):
         ) as sftp:
             sftp.putfo(
                 json_buffer,
-                f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json",
+                f"/var/www/images/media/L9/uploadedFiles/{task_id}_broken_urls.json",
             )
     update_task_field(task_id=task_id, field="progress", value=1)
     return
@@ -1214,7 +1214,7 @@ def getImageCsv():
         ) as sftp:
             app.logger.info("Connected to FTP server")
 
-            base_csv_path = f"public_html/media/L9/uploadedFiles/"
+            base_csv_path = f"/var/www/images/media/L9/uploadedFiles/"
             combined_df = pd.DataFrame()
             file_index = 1
             while True:
@@ -1247,14 +1247,12 @@ def getImageCsv():
             res["df"] = dfJson
             if (
                 sftp.exists(
-                    f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json"
+                    f"/var/www/images/media/L9/uploadedFiles/{task_id}_broken_urls.json"
                 )
                 == True
             ):
                 with BytesIO() as json_buffer:
-                    json_path = (
-                        f"public_html/media/L9/uploadedFiles/{task_id}_broken_urls.json"
-                    )
+                    json_path = f"/var/www/images/media/L9/uploadedFiles/{task_id}_broken_urls.json"
                     sftp.getfo(json_path, json_buffer)
                     json_buffer.seek(0)
                     json_data = json_buffer.read().decode(
@@ -1462,7 +1460,7 @@ def DeleteSingleImage():
     imageNumber = request.form["imageNumber"]
     folder_name = datetime.today().strftime("%Y-%m-%d")
 
-    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
     hostname = app.config["HOSTNAME"]
     username = app.config["USERNAME"]
     password = app.config["PASSWORD"]
@@ -1532,9 +1530,9 @@ def packageBuilder():
 
     imageNumber = 1
     folder_name = datetime.today().strftime("%Y-%m-%d")
-    server_path = f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+    server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
     BikeWagonUrl = (
-        f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+        f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
     )
 
     # save packageImage to server
@@ -1554,7 +1552,7 @@ def packageBuilder():
             if sftp.exists(server_path) and flag == "false":
                 flag = True
                 error = "Duplicate Image. Would you like to overwrite the image?"
-                displayImage = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                displayImage = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
                 data = {
                     "error": error,
                     "flag": flag,
@@ -1567,16 +1565,14 @@ def packageBuilder():
             if sftp.exists(server_path) and saveAsNew == "true":
                 while sftp.exists(server_path):
                     imageNumber += 1
-                    server_path = (
-                        f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                    )
-                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
 
-            with sftp.cd("public_html/media/L9/"):
+            with sftp.cd("/var/www/images/media/L9/"):
                 if sftp.exists(folder_name):
                     pass
                 else:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    # create new directory at /var/www/images/media/L9/ with the folder_name variable
                     sftp.mkdir(folder_name)
 
             sftp.putfo(image_io, server_path)
@@ -1657,9 +1653,9 @@ def filePackageBuilder(task_id, file, folder):
             cnopts=cnopts,
         ) as sftp:
             app.logger.info("Connected to FTP server")
-            with sftp.cd("public_html/media/L9/"):
+            with sftp.cd("/var/www/images/media/L9/"):
                 if sftp.exists(folder_name) == False:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    # create new directory at /var/www/images/media/L9/ with the folder_name variable
                     sftp.mkdir(folder_name)
                     app.logger.info("Created new folder")
 
@@ -1701,7 +1697,7 @@ def filePackageBuilder(task_id, file, folder):
                         and comboDf["BINDING_IMAGE_URL"].count() == 0
                     ):
                         total = 2
-                        binding=""
+                        binding = ""
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         boot = comboDf["BOOT_IMAGE_URL"][0]
                         if packageType == "Ski":
@@ -1713,7 +1709,7 @@ def filePackageBuilder(task_id, file, folder):
                         and comboDf["BINDING_IMAGE_URL"].count() > 0
                     ):
                         total = 2
-                        boot =""
+                        boot = ""
                         skiBoard = comboDf["MAIN_IMAGE_URL"][0]
                         binding = comboDf["BINDING_IMAGE_URL"][0]
                         if packageType == "Ski":
@@ -1740,11 +1736,9 @@ def filePackageBuilder(task_id, file, folder):
 
                     imageNumber = 1
                     folder_name = datetime.today().strftime("%Y-%m-%d")
-                    server_path = (
-                        f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                    )
+                    server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
                     sftp.putfo(image_io, server_path)
-                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
                     df.loc[
                         df["VARIATION_PARENT_SKU"] == combo,
                         "Server Image 1",
@@ -1758,7 +1752,7 @@ def filePackageBuilder(task_id, file, folder):
                         BikeWagonUrl = skiBoard
                     else:
                         server_path = (
-                            f"public_html/media/L9/{folder_name}/{sku}_Img2.jpg"
+                            f"/var/www/images/media/L9/{folder_name}/{sku}_Img2.jpg"
                         )
                         headers = {
                             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
@@ -1768,7 +1762,7 @@ def filePackageBuilder(task_id, file, folder):
                         image = Image.open(BytesIO(response.content)).convert("RGBA")
                         image_io = fn.process_image(image)
                         sftp.putfo(image_io, server_path)
-                        BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img2.jpg"
+                        BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img2.jpg"
 
                     df.loc[
                         df["VARIATION_PARENT_SKU"] == combo,
@@ -1783,7 +1777,7 @@ def filePackageBuilder(task_id, file, folder):
                             BikeWagonUrl = boot
                         else:
                             server_path = (
-                                f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                f"/var/www/images/media/L9/{folder_name}/{sku}_Img3.jpg"
                             )
                             headers = {
                                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
@@ -1795,7 +1789,7 @@ def filePackageBuilder(task_id, file, folder):
                             )
                             image_io = fn.process_image(image)
                             sftp.putfo(image_io, server_path)
-                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                            BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img3.jpg"
                         df.loc[
                             df["VARIATION_PARENT_SKU"] == combo,
                             "Server Image 3",
@@ -1808,7 +1802,7 @@ def filePackageBuilder(task_id, file, folder):
                             BikeWagonUrl = binding
                         else:
                             server_path = (
-                                f"public_html/media/L9/{folder_name}/{sku}_Img4.jpg"
+                                f"/var/www/images/media/L9/{folder_name}/{sku}_Img4.jpg"
                             )
                             headers = {
                                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
@@ -1822,7 +1816,7 @@ def filePackageBuilder(task_id, file, folder):
                             )
                             image_io = fn.process_image(image)
                             sftp.putfo(image_io, server_path)
-                            BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img4.jpg"
+                            BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img4.jpg"
                         df.loc[
                             df["VARIATION_PARENT_SKU"] == combo,
                             "Server Image 4",
@@ -1835,9 +1829,7 @@ def filePackageBuilder(task_id, file, folder):
                             if boot.startswith("https://bikewagonmedia.com"):
                                 BikeWagonUrl = boot
                             else:
-                                server_path = (
-                                    f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
-                                )
+                                server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img3.jpg"
                                 headers = {
                                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
                                     # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
@@ -1850,7 +1842,7 @@ def filePackageBuilder(task_id, file, folder):
                                 )
                                 image_io = fn.process_image(image)
                                 sftp.putfo(image_io, server_path)
-                                BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img3.jpg"
                             df.loc[
                                 df["VARIATION_PARENT_SKU"] == combo,
                                 "Server Image 3",
@@ -1864,9 +1856,7 @@ def filePackageBuilder(task_id, file, folder):
                             if binding.startswith("https://bikewagonmedia.com"):
                                 BikeWagonUrl = binding
                             else:
-                                server_path = (
-                                    f"public_html/media/L9/{folder_name}/{sku}_Img3.jpg"
-                                )
+                                server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img3.jpg"
                                 headers = {
                                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
                                     # "Referer": "https://your-referer-site.com",  # Replace with the actual referer if needed
@@ -1879,7 +1869,7 @@ def filePackageBuilder(task_id, file, folder):
                                 )
                                 image_io = fn.process_image(image)
                                 sftp.putfo(image_io, server_path)
-                                BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img3.jpg"
+                                BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img3.jpg"
                             df.loc[
                                 df["VARIATION_PARENT_SKU"] == combo,
                                 "Server Image 3",
@@ -1932,9 +1922,9 @@ def filePackageBuilder(task_id, file, folder):
             password=password,
             cnopts=cnopts,
         ) as sftp:
-            with sftp.cd("public_html/media/L9/"):
+            with sftp.cd("/var/www/images/media/L9/"):
                 if sftp.exists("uploadedFiles") == False:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    # create new directory at /var/www/images/media/L9/ with the folder_name variable
                     sftp.mkdir("uploadedFiles")
                     app.logger.info("Created new folder")
                 sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_1.csv")
@@ -2383,9 +2373,9 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
 #             cnopts=cnopts,
 #         ) as sftp:
 #             app.logger.info("Connected to FTP server")
-#             with sftp.cd("public_html/media/L9/"):
+#             with sftp.cd("/var/www/images/media/L9/"):
 #                 if sftp.exists(folder_name) == False:
-#                     # create new directory at public_html/media/L9/ with the folder_name variable
+#                     # create new directory at /var/www/images/media/L9/ with the folder_name variable
 #                     sftp.mkdir(folder_name)
 #                     app.logger.info("Created new folder")
 
@@ -2437,10 +2427,10 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
 #                     imageNumber = 1
 #                     folder_name = datetime.today().strftime("%Y-%m-%d")
 #                     server_path = (
-#                         f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+#                         f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
 #                     )
 #                     sftp.putfo(image_io, server_path)
-#                     BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+#                     BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
 #                     df.loc[
 #                         df["VARIATION_PARENT_SKU"] == combo,
 #                         "Server Image 1",
@@ -2471,9 +2461,9 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
 #             password=password,
 #             cnopts=cnopts,
 #         ) as sftp:
-#             with sftp.cd("public_html/media/L9/"):
+#             with sftp.cd("/var/www/images/media/L9/"):
 #                 if sftp.exists("uploadedFiles") == False:
-#                     # create new directory at public_html/media/L9/ with the folder_name variable
+#                     # create new directory at /var/www/images/media/L9/ with the folder_name variable
 #                     sftp.mkdir("uploadedFiles")
 #                 app.logger.info("Created new folder")
 #                 sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
@@ -2504,9 +2494,9 @@ def singleSkiFileBuilder(task_id, df, app, folder):
             cnopts=cnopts,
         ) as sftp:
             app.logger.info("Connected to FTP server")
-            with sftp.cd("public_html/media/L9/"):
+            with sftp.cd("/var/www/images/media/L9/"):
                 if sftp.exists(folder_name) == False:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    # create new directory at /var/www/images/media/L9/ with the folder_name variable
                     sftp.mkdir(folder_name)
                     app.logger.info("Created new folder")
 
@@ -2557,11 +2547,9 @@ def singleSkiFileBuilder(task_id, df, app, folder):
 
                     imageNumber = 1
                     folder_name = datetime.today().strftime("%Y-%m-%d")
-                    server_path = (
-                        f"public_html/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-                    )
+                    server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
                     sftp.putfo(image_io, server_path)
-                    BikeWagonUrl = f"https://bikewagonmedia.com/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
+                    BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
                     df.loc[
                         df["VARIATION_PARENT_SKU"] == combo,
                         "Server Image 1",
@@ -2601,9 +2589,9 @@ def singleSkiFileBuilder(task_id, df, app, folder):
             password=password,
             cnopts=cnopts,
         ) as sftp:
-            with sftp.cd("public_html/media/L9/"):
+            with sftp.cd("/var/www/images/media/L9/"):
                 if sftp.exists("uploadedFiles") == False:
-                    # create new directory at public_html/media/L9/ with the folder_name variable
+                    # create new directory at /var/www/images/media/L9/ with the folder_name variable
                     sftp.mkdir("uploadedFiles")
                 app.logger.info("Created new folder")
                 sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}_1.csv")
