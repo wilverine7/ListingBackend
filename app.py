@@ -741,6 +741,11 @@ def ImageCsv(task_id, file, folder):
                             f"IMAGE_{x}" in dfCombo.columns
                             and dfCombo[f"IMAGE_{x}"].count() > 0
                         ):
+                            if (
+                                x == 1
+                                and str(dfCombo["SKI_FLIP"][0] or "").upper() == "TRUE"
+                            ):
+                                flip = True
                             # if it is a url
                             imageUrl = dfCombo[f"IMAGE_{x}"][0]
                             sep = "?"
@@ -766,7 +771,15 @@ def ImageCsv(task_id, file, folder):
                                     image = Image.open(
                                         BytesIO(response.content)
                                     ).convert("RGBA")
-                                    image_io = fn.process_image(image)
+                                    if flip:
+                                        builtSki = fn.skiBuilder(imageUrl)
+                                        # Save the resized image to a file-like object
+                                        image_io = BytesIO()
+                                        builtSki.convert("RGB").save(image_io, "JPEG")
+
+                                        image_io.seek(0)
+                                    else:
+                                        image_io = fn.process_image(image)
                                     with open(server_path, "wb") as f:
                                         f.write(image_io.getvalue())
                                     totalUploaded += 1
@@ -840,8 +853,15 @@ def ImageCsv(task_id, file, folder):
                                 server_path = f"/var/www/images/media/L9/{folder_name}/{sku}_{x}.jpg"
                                 try:
                                     image = Image.open(imagePath).convert("RGBA")
+                                    if flip:
+                                        builtSki = fn.skiBuilder(imagePath)
+                                        # Save the resized image to a file-like object
+                                        image_io = BytesIO()
+                                        builtSki.convert("RGB").save(image_io, "JPEG")
 
-                                    image_io = fn.process_image(image)
+                                        image_io.seek(0)
+                                    else:
+                                        image_io = fn.process_image(image)
 
                                     with open(server_path, "wb") as f:
                                         f.write(image_io.getvalue())
@@ -887,6 +907,11 @@ def ImageCsv(task_id, file, folder):
                         f"IMAGE_{x}" in dfCombo.columns
                         and dfCombo[f"IMAGE_{x}"].count() > 0
                     ):
+                        if (
+                            x == 1
+                            and str(dfCombo["SKI_FLIP"][0] or "").upper() == "TRUE"
+                        ):
+                            flip = True
                         ####### I need to fix x and make sure the variable isn't reused####
 
                         # if the first row doesn't have an image but another row does have an image we need to use that image
@@ -932,7 +957,15 @@ def ImageCsv(task_id, file, folder):
                                 image = Image.open(BytesIO(response.content)).convert(
                                     "RGBA"
                                 )
-                                image_io = fn.process_image(image)
+                                if flip:
+                                    builtSki = fn.skiBuilder(imageUrl)
+                                    # Save the resized image to a file-like object
+                                    image_io = BytesIO()
+                                    builtSki.convert("RGB").save(image_io, "JPEG")
+
+                                    image_io.seek(0)
+                                else:
+                                    image_io = fn.process_image(image)
                                 with open(server_path, "wb") as f:
                                     f.write(image_io.getvalue())
                                 totalUploaded += 1
@@ -994,7 +1027,16 @@ def ImageCsv(task_id, file, folder):
                             try:
                                 image = Image.open(imagePath).convert("RGBA")
 
-                                image_io = fn.process_image(image)
+                                if flip == "TRUE":
+                                    builtSki = fn.skiBuilder(imagePath)
+                                    # Save the resized image to a file-like object
+                                    image_io = BytesIO()
+                                    builtSki.convert("RGB").save(image_io, "JPEG")
+
+                                    image_io.seek(0)
+
+                                else:
+                                    image_io = fn.process_image(image)
 
                                 with open(server_path, "wb") as f:
                                     f.write(image_io.getvalue())
