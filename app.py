@@ -746,6 +746,8 @@ def ImageCsv(task_id, file, folder):
                                 and str(dfCombo["SKI_FLIP"][0] or "").upper() == "TRUE"
                             ):
                                 flip = True
+                            else:
+                                flip = False
                             # if it is a url
                             imageUrl = dfCombo[f"IMAGE_{x}"][0]
                             sep = "?"
@@ -912,6 +914,8 @@ def ImageCsv(task_id, file, folder):
                             and str(dfCombo["SKI_FLIP"][0] or "").upper() == "TRUE"
                         ):
                             flip = True
+                        else:
+                            flip = False
                         ####### I need to fix x and make sure the variable isn't reused####
 
                         # if the first row doesn't have an image but another row does have an image we need to use that image
