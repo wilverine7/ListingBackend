@@ -2368,6 +2368,8 @@ def getFolderStructure():
 
     items = []
     for entry in os.scandir(folder):
+        if entry.name.startswith("."):
+            continue
         items.append(
             {
                 "name": entry.name,
