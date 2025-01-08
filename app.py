@@ -2376,6 +2376,8 @@ def getFolderStructure():
             }
         )
 
+    items.sort(key=lambda x: x["is_directory"], reverse=True)
+
     return jsonify(items)
 
 
