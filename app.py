@@ -2387,11 +2387,10 @@ def getFolderStructure():
 def uploadCmsImage():
     app.logger.info("UrlUpload")
     imageFile = request.files["image"]
-    folderPath = request.files["folderPath"]
-
+    folderPath = request.form["folderPath"]
     fileName = imageFile.filename
 
-    flag = request.form["flag"] == "true"
+    # flag = request.form["flag"] == "true"
     # creates a variable to pass to the html page to display the image and url
     server_dir = folderPath
     server_path = f"{server_dir}/{fileName}"
@@ -2426,8 +2425,9 @@ def uploadCmsImage():
 
         data = {"displayImage": BikeWagonUrl, "flag": False}
         return data, 200
-    except:
-        print("error")
+    except Exception as e:
+        app.logger.error(f"Error during file upload: {e}")
+        return jsonify({"error": "An error occurred during the upload process"}), 500
 
 
 if __name__ == "__main__":
