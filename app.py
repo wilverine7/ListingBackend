@@ -2355,7 +2355,7 @@ def singleSkiFileBuilder(task_id, df, app, folder):
 @app.route("/folderStructure", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def getFolderStructure():
-    BASE_PATH = "/Users/willclayton/Downloads/BR_images"
+    BASE_PATH = "/var/www/images/CMS"
     folder = request.args.get("folder", BASE_PATH)
     folder = os.path.abspath(folder)
 
