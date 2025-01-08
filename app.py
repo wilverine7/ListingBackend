@@ -2353,9 +2353,9 @@ def singleSkiFileBuilder(task_id, df, app, folder):
 
 
 @app.route("/folderStructure", methods=["GET"])
-@cross_origin(supports_credentials=True)
 def getFolderStructure():
     BASE_PATH = "/var/www/images/CMS"
+    # BASE_PATH = "/Users/willclayton/Downloads"
     folder = request.args.get("folder", BASE_PATH)
     folder = os.path.abspath(folder)
 
@@ -2384,7 +2384,6 @@ def getFolderStructure():
 
 
 @app.route("/uploadCmsImage", methods=["POST"])
-@cross_origin(supports_credentials=True)
 def uploadCmsImage():
     app.logger.info("UrlUpload")
     imageFile = request.files["image"]
