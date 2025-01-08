@@ -2243,147 +2243,6 @@ def caUpload(sku, imageUrl, imageNum, auth_token):
     return (error, response.text)
 
 
-# def singleSkiFileBuilder(task_id, df, app, folder):
-#     from flask import Flask, request, Response, jsonify
-#     import pandas as pd
-#     from flask_cors import CORS, cross_origin
-#     from datetime import datetime
-#     import os
-#     import json
-#     from datetime import datetime
-#     from io import BytesIO
-#     import functions as fn
-#     import requests
-#     import pysftp
-#     from PIL import Image
-#     from openpyxl.workbook import Workbook
-#     from openpyxl.utils.dataframe import dataframe_to_rows
-#     from flask_api import status
-#     from openpyxl.worksheet.datavalidation import DataValidation
-#     import gspread
-#     import logging
-#     import sys
-#     import time
-
-#     df = df[df["VARIATION_PARENT_SKU"] != "Parent"]
-#     uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
-#     folder_name = datetime.today().strftime("%Y-%m-%d")
-
-#     hostname = app.config["HOSTNAME"]
-#     username = app.config["USERNAME"]
-#     password = app.config["PASSWORD"]
-
-#     columns = []
-#     cnopts = pysftp.CnOpts()
-#     cnopts.hostkeys = None
-
-#     try:
-#         with pysftp.Connection(
-#             hostname,
-#             username=username,
-#             password=password,
-#             cnopts=cnopts,
-#         ) as sftp:
-#             app.logger.info("Connected to FTP server")
-#             with sftp.cd("/var/www/images/media/L9/"):
-#                 if sftp.exists(folder_name) == False:
-#                     # create new directory at /var/www/images/media/L9/ with the folder_name variable
-#                     sftp.mkdir(folder_name)
-#                     app.logger.info("Created new folder")
-
-#             try:
-#                 # getting the uniqueSku problem is you download images multiple times
-#                 for combo in uniqueCombo:
-#                     comboDf = df[df["VARIATION_PARENT_SKU"] == combo]
-#                     sku = combo
-#                     comboDf.reset_index(drop=True, inplace=True)
-#                     packageType = comboDf["SKI/BOARD"][0].upper()
-#                     if comboDf["SKI/BOARD"][0].upper() == "SKI":
-#                         packageType = "Ski"
-#                     elif comboDf["SKI/BOARD"][0].upper() == "BOARD":
-#                         packageType = "Board"
-#                     else:
-#                         error = "There is an error with the Ski/Board column. Please make sure all values are either Ski or Board."
-#                         return (error, status.HTTP_400_BAD_REQUEST)
-#                     imagePath = comboDf["MAIN_IMAGE_URL"][0]
-#                     try:
-#                         r = requests.get(imagePath, stream=True)
-#                     except:
-#                         status_code = 500
-#                     else:
-#                         status_code = r.status_code
-#                     if status_code != 200:
-#                         # if the imagePath contains a . split the string and get everything before the .
-#                         if "." in imagePath:
-#                             fileName = imagePath.split(".")[0]
-#                             fileName = fileName.strip()
-#                         else:
-#                             fileName = imagePath
-#                             fileName = fileName.strip()
-
-#                         for file in folder:
-#                             imageName = file.filename.rsplit("/", 1)[-1]
-#                             # remove the file extenstion from the imageName
-#                             imageName = imageName.split(".")[0]
-
-#                             if imageName == fileName:
-#                                 imagePath = file
-#                     packageImage = skiBuilder(imagePath)
-
-#                     image_io = BytesIO()
-#                     packageImage.convert("RGB").save(image_io, "JPEG")
-
-#                     # Upload the image to the server
-#                     image_io.seek(0)  # Reset the file pointer to the beginning
-
-#                     imageNumber = 1
-#                     folder_name = datetime.today().strftime("%Y-%m-%d")
-#                     server_path = (
-#                         f"/var/www/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-#                     )
-#                     with open(server_path, "wb") as f:
-#                       f.write(image_io.getvalue())
-#                     BikeWagonUrl = f"https://l9golf.com/images/media/L9/{folder_name}/{sku}_Img{imageNumber}.jpg"
-#                     df.loc[
-#                         df["VARIATION_PARENT_SKU"] == combo,
-#                         "Server Image 1",
-#                     ] = BikeWagonUrl
-
-#             except Exception as e:
-#                 print(e)
-#     except Exception as e:
-#         print(e)
-#     df = df.rename(columns={"VARIATION_PARENT_SKU": "PARENT_SKU_COLOR"})
-#     df["PARENT_SKU"] = df["PARENT_SKU_COLOR"]
-#     df.dropna(subset=["Server Image 1"], inplace=True)
-
-#     df.set_index("PARENT_SKU_COLOR", inplace=True)
-#     # dfJson = df.to_json(orient="index")
-#     # ResponseData = {"df": dfJson}
-
-#     csv_bytes = df.to_csv().encode("utf-8")  # Encode CSV to bytes using UTF-8
-#     csv_buffer = BytesIO(csv_bytes)  # Wrap the bytes into a BytesIO object
-
-#     # Reset the buffer pointer to the start
-#     csv_buffer.seek(0)
-
-#     try:
-#         with pysftp.Connection(
-#             hostname,
-#             username=username,
-#             password=password,
-#             cnopts=cnopts,
-#         ) as sftp:
-#             with sftp.cd("/var/www/images/media/L9/"):
-#                 if sftp.exists("uploadedFiles") == False:
-#                     # create new directory at /var/www/images/media/L9/ with the folder_name variable
-#                     sftp.mkdir("uploadedFiles")
-#                 app.logger.info("Created new folder")
-#                 sftp.putfo(csv_buffer, f"uploadedFiles/{task_id}.csv")
-#     except:
-#         print("error")
-
-
 def singleSkiFileBuilder(task_id, df, app, folder):
     df = df[df["VARIATION_PARENT_SKU"] != "Parent"]
     uniqueCombo = df["VARIATION_PARENT_SKU"].unique()
@@ -2491,6 +2350,107 @@ def singleSkiFileBuilder(task_id, df, app, folder):
         print("error")
     update_task_field(task_id=task_id, field="progress", value=1)
     return
+
+
+@app.route("/folderStructure", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def getFolderStructure():
+    BASE_PATH = "/Users/willclayton/Downloads/BR_images"
+    folder = request.args.get("folder", BASE_PATH)
+    folder = os.path.abspath(folder)
+
+    # Ensure the folder stays within the BASE_PATH
+    if not folder.startswith(BASE_PATH):
+        return jsonify({"error": "Access denied"}), 403
+
+    if not os.path.exists(folder):
+        return jsonify({"error": "Folder not found"}), 404
+
+    items = []
+    for entry in os.scandir(folder):
+        items.append(
+            {
+                "name": entry.name,
+                "is_directory": entry.is_dir(),
+                "path": entry.path,
+            }
+        )
+
+    return jsonify(items)
+
+
+@app.route("/uploadCmsImage", methods=["POST"])
+@cross_origin(supports_credentials=True)
+def uploadCmsImage():
+    app.logger.info("UrlUpload")
+    if request.form["url"] == "":
+        imageFile = request.files["file"]
+        imagePath = ""
+    else:
+        sep = "?"
+        imagePath = request.form["url"]
+        imagePath = imagePath.split(sep, 1)[0]
+        r = requests.get(imagePath, stream=True)
+        if r.status_code != 200:
+            imagePath = request.form["url"]
+
+    imageFilePath = request.form["page_path"]
+    imageName = request.form["image_name"]
+
+    flag = request.form["flag"] == "true"
+    # creates a variable to pass to the html page to display the image and url
+    BikeWagonUrl = f"https://l9golf.com/images/CMS/{imageFilePath}/{imageName}.jpg"
+    server_path = f"/var/www/images/CMS/{imageFilePath}/{imageName}.jpg"
+    server_dir = f"/var/www/images/CMS/{imageFilePath}"
+
+    if os.path.isfile(server_path) and flag == False:
+        flag = True
+        error = "Duplicate Image. Would you like to overwrite the image?"
+
+        data = {
+            "error": error,
+            "flag": flag,
+            "displayImage": BikeWagonUrl,
+        }
+        return data
+    else:
+        if not os.path.exists(server_dir):
+            os.makedirs(server_dir)
+    if imagePath == "":
+        # handle the file upload
+        image = Image.open(imageFile).convert("RGBA")
+
+        # Now save the file
+        with open(server_path, "wb") as f:
+            f.write(image_io.getvalue())
+
+        data = {"displayImage": BikeWagonUrl, "flag": False}
+        return data, 200
+    else:
+        # handle the url upload
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+            }
+            # open the image from the url
+            response = requests.get(imagePath, stream=True, headers=headers)
+            # if the user wants to remove background it processes here.
+
+            image = Image.open(BytesIO(response.content)).convert("RGBA")
+
+            # Now save the file
+            with open(server_path, "wb") as f:
+                f.write(image_io.getvalue())
+
+            data = {"displayImage": BikeWagonUrl, "flag": False}
+
+            return data, 200
+        except:
+            error = "Invalid URL"
+            # if the image wouldn't open then the url is invalid
+            json = {"error": error}
+            app.logger.error(f"Invalid URL: {error}")
+            return json
 
 
 if __name__ == "__main__":
