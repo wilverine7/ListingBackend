@@ -2385,25 +2385,17 @@ def getFolderStructure():
 @cross_origin(supports_credentials=True)
 def uploadCmsImage():
     app.logger.info("UrlUpload")
-    if request.form["url"] == "":
-        imageFile = request.files["file"]
-        imagePath = ""
-    else:
-        sep = "?"
-        imagePath = request.form["url"]
-        imagePath = imagePath.split(sep, 1)[0]
-        r = requests.get(imagePath, stream=True)
-        if r.status_code != 200:
-            imagePath = request.form["url"]
+    imageFile = request.files["image"]
+    folderPath = request.files["folderPath"]
 
-    imageFilePath = request.form["page_path"]
-    imageName = request.form["image_name"]
+    fileName = imageFile.filename
 
     flag = request.form["flag"] == "true"
     # creates a variable to pass to the html page to display the image and url
-    BikeWagonUrl = f"https://l9golf.com/images/CMS/{imageFilePath}/{imageName}.jpg"
-    server_path = f"/var/www/images/CMS/{imageFilePath}/{imageName}.jpg"
-    server_dir = f"/var/www/images/CMS/{imageFilePath}"
+    server_dir = folderPath
+    server_path = f"{server_dir}/{fileName}"
+    relative_path = server_dir.removeprefix("/var/www/")
+    BikeWagonUrl = f"https://l9golf.com/{relative_path}/{fileName}"
 
     if os.path.isfile(server_path) and flag == False:
         flag = True
@@ -2418,9 +2410,14 @@ def uploadCmsImage():
     else:
         if not os.path.exists(server_dir):
             os.makedirs(server_dir)
-    if imagePath == "":
+    try:
         # handle the file upload
         image = Image.open(imageFile).convert("RGBA")
+
+        # Create a BytesIO object to save the image temporarily
+        image_io = BytesIO()
+        image.save(image_io, format="JPG")  # Save the image in the desired format
+        image_io.seek(0)  # Reset the buffer position
 
         # Now save the file
         with open(server_path, "wb") as f:
@@ -2428,31 +2425,8 @@ def uploadCmsImage():
 
         data = {"displayImage": BikeWagonUrl, "flag": False}
         return data, 200
-    else:
-        # handle the url upload
-        try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-            }
-            # open the image from the url
-            response = requests.get(imagePath, stream=True, headers=headers)
-            # if the user wants to remove background it processes here.
-
-            image = Image.open(BytesIO(response.content)).convert("RGBA")
-
-            # Now save the file
-            with open(server_path, "wb") as f:
-                f.write(image_io.getvalue())
-
-            data = {"displayImage": BikeWagonUrl, "flag": False}
-
-            return data, 200
-        except:
-            error = "Invalid URL"
-            # if the image wouldn't open then the url is invalid
-            json = {"error": error}
-            app.logger.error(f"Invalid URL: {error}")
-            return json
+    except:
+        print("error")
 
 
 if __name__ == "__main__":
