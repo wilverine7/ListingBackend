@@ -2412,11 +2412,11 @@ def uploadCmsImage():
             os.makedirs(server_dir)
     try:
         # handle the file upload
-        image = Image.open(imageFile).convert("RGBA")
+        image = Image.open(imageFile).convert("RGB")
 
         # Create a BytesIO object to save the image temporarily
         image_io = BytesIO()
-        image.save(image_io, format="JPG")  # Save the image in the desired format
+        image.save(image_io, format="JPEG")  # Save the image in the desired format
         image_io.seek(0)  # Reset the buffer position
 
         # Now save the file
