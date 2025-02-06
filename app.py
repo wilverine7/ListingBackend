@@ -2393,10 +2393,11 @@ def getFolderStructure():
 
 @app.route("/uploadCmsImage", methods=["POST"])
 def uploadCmsImage():
-    app.logger.info("UrlUpload")
+    app.logger.info("uploadCmsImage")
     if os.getenv("NEXT_API_TOKEN") == request.headers.get("Auth-Token"):
         imageFile = request.files["image"]
         folderPath = request.form["folderPath"]
+        flag = request.form["flag"]
         fileName = imageFile.filename
 
         # flag = request.form["flag"] == "true"
@@ -2406,7 +2407,7 @@ def uploadCmsImage():
         relative_path = server_dir.removeprefix("/var/www/")
         BikeWagonUrl = f"https://l9golf.com/{relative_path}/{fileName}"
 
-        if os.path.isfile(server_path) and flag == False:
+        if os.path.isfile(server_path) and flag == "false":
             flag = True
             error = "Duplicate Image. Would you like to overwrite the image?"
 
