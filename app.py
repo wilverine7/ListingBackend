@@ -2359,98 +2359,110 @@ def singleSkiFileBuilder(task_id, df, app, folder):
 
 @app.route("/folderStructure", methods=["GET"])
 def getFolderStructure():
-    BASE_PATH = "/var/www/images/CMS"
-    # BASE_PATH = "/Users/willclayton/Downloads"
-    folder = request.args.get("folder", BASE_PATH)
-    folder = os.path.abspath(folder)
+    if os.getenv("NEXT_API_TOKEN") == request.headers.get("Auth-Token"):
+        BASE_PATH = "/var/www/images/CMS"
+        # BASE_PATH = "/Users/willclayton/Downloads"
+        folder = request.args.get("folder", BASE_PATH)
+        folder = os.path.abspath(folder)
 
-    # Ensure the folder stays within the BASE_PATH
-    if not folder.startswith(BASE_PATH):
-        return jsonify({"error": "Access denied"}), 403
+        # Ensure the folder stays within the BASE_PATH
+        if not folder.startswith(BASE_PATH):
+            return jsonify({"error": "Access denied"}), 403
 
-    if not os.path.exists(folder):
-        return jsonify({"error": "Folder not found"}), 404
+        if not os.path.exists(folder):
+            return jsonify({"error": "Folder not found"}), 404
 
-    items = []
-    for entry in os.scandir(folder):
-        if entry.name.startswith("."):
-            continue
-        items.append(
-            {
-                "name": entry.name,
-                "is_directory": entry.is_dir(),
-                "path": entry.path,
-            }
-        )
+        items = []
+        for entry in os.scandir(folder):
+            if entry.name.startswith("."):
+                continue
+            items.append(
+                {
+                    "name": entry.name,
+                    "is_directory": entry.is_dir(),
+                    "path": entry.path,
+                }
+            )
 
-    items.sort(key=lambda x: x["is_directory"], reverse=True)
+        items.sort(key=lambda x: x["is_directory"], reverse=True)
 
-    return jsonify(items)
+        return jsonify(items)
+    else:
+        return "Unauthorized", 401
 
 
 @app.route("/uploadCmsImage", methods=["POST"])
 def uploadCmsImage():
     app.logger.info("UrlUpload")
-    imageFile = request.files["image"]
-    folderPath = request.form["folderPath"]
-    fileName = imageFile.filename
+    if os.getenv("NEXT_API_TOKEN") == request.headers.get("Auth-Token"):
+        imageFile = request.files["image"]
+        folderPath = request.form["folderPath"]
+        fileName = imageFile.filename
 
-    # flag = request.form["flag"] == "true"
-    # creates a variable to pass to the html page to display the image and url
-    server_dir = folderPath
-    server_path = f"{server_dir}/{fileName}"
-    relative_path = server_dir.removeprefix("/var/www/")
-    BikeWagonUrl = f"https://l9golf.com/{relative_path}/{fileName}"
+        # flag = request.form["flag"] == "true"
+        # creates a variable to pass to the html page to display the image and url
+        server_dir = folderPath
+        server_path = f"{server_dir}/{fileName}"
+        relative_path = server_dir.removeprefix("/var/www/")
+        BikeWagonUrl = f"https://l9golf.com/{relative_path}/{fileName}"
 
-    if os.path.isfile(server_path) and flag == False:
-        flag = True
-        error = "Duplicate Image. Would you like to overwrite the image?"
+        if os.path.isfile(server_path) and flag == False:
+            flag = True
+            error = "Duplicate Image. Would you like to overwrite the image?"
 
-        data = {
-            "error": error,
-            "flag": flag,
-            "displayImage": BikeWagonUrl,
-        }
-        return data
+            data = {
+                "error": error,
+                "flag": flag,
+                "displayImage": BikeWagonUrl,
+            }
+            return data
+        else:
+            if not os.path.exists(server_dir):
+                os.makedirs(server_dir)
+        try:
+            # handle the file upload
+            image = Image.open(imageFile).convert("RGB")
+
+            # Create a BytesIO object to save the image temporarily
+            image_io = BytesIO()
+            image.save(image_io, format="JPEG")  # Save the image in the desired format
+            image_io.seek(0)  # Reset the buffer position
+
+            # Now save the file
+            with open(server_path, "wb") as f:
+                f.write(image_io.getvalue())
+
+            data = {"displayImage": BikeWagonUrl, "flag": False}
+            return data, 200
+        except Exception as e:
+            app.logger.error(f"Error during file upload: {e}")
+            return (
+                jsonify({"error": "An error occurred during the upload process"}),
+                500,
+            )
     else:
-        if not os.path.exists(server_dir):
-            os.makedirs(server_dir)
-    try:
-        # handle the file upload
-        image = Image.open(imageFile).convert("RGB")
-
-        # Create a BytesIO object to save the image temporarily
-        image_io = BytesIO()
-        image.save(image_io, format="JPEG")  # Save the image in the desired format
-        image_io.seek(0)  # Reset the buffer position
-
-        # Now save the file
-        with open(server_path, "wb") as f:
-            f.write(image_io.getvalue())
-
-        data = {"displayImage": BikeWagonUrl, "flag": False}
-        return data, 200
-    except Exception as e:
-        app.logger.error(f"Error during file upload: {e}")
-        return jsonify({"error": "An error occurred during the upload process"}), 500
+        return "Unauthorized", 401
 
 
 @app.route("/deleteCmsImage", methods=["POST"])
 def deleteCmsImage():
     app.logger.info("UrlUpload")
-    imageUrl = request.json["url"]
-    print(imageUrl)
-    BASE_PATH = "/var/www/images/CMS"
-    imagePath = imageUrl.removeprefix("https://l9golf.com/images/CMS")
-    fullPath = BASE_PATH + imagePath
-    print(fullPath)
-    try:
-        p = Path(fullPath)
-        Path.unlink(p)
-        return "success", 200
-    except Exception as e:
-        app.logger.error(f"Error during CMS file delete: {e}")
-        return "error", 500
+    if os.getenv("NEXT_API_TOKEN") == request.headers.get("Auth-Token"):
+        imageUrl = request.json["url"]
+        print(imageUrl)
+        BASE_PATH = "/var/www/images/CMS"
+        imagePath = imageUrl.removeprefix("https://l9golf.com/images/CMS")
+        fullPath = BASE_PATH + imagePath
+        print(fullPath)
+        try:
+            p = Path(fullPath)
+            Path.unlink(p)
+            return "success", 200
+        except Exception as e:
+            app.logger.error(f"Error during CMS file delete: {e}")
+            return "error", 500
+    else:
+        return "Unauthorized", 401
 
 
 if __name__ == "__main__":
