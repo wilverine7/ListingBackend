@@ -21,6 +21,11 @@ import threading
 import uuid
 import redis
 from dotenv import load_dotenv
+from werkzeug.serving import WSGIRequestHandler
+from pathlib import Path
+
+# Suppress Werkzeug logs
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
 load_dotenv()
 
@@ -1271,7 +1276,7 @@ def start_task():
 def get_progress(task_id):
     progress_data = redis_client.get(task_id)
     data = json.loads(progress_data)
-    app.logger.info(f"progress: ${data}")
+    # app.logger.info(f"progress: ${data}")
     return jsonify(data)
 
 
@@ -2428,6 +2433,24 @@ def uploadCmsImage():
     except Exception as e:
         app.logger.error(f"Error during file upload: {e}")
         return jsonify({"error": "An error occurred during the upload process"}), 500
+
+
+@app.route("/deleteCmsImage", methods=["POST"])
+def deleteCmsImage():
+    app.logger.info("UrlUpload")
+    imageUrl = request.json["url"]
+    print(imageUrl)
+    BASE_PATH = "/var/www/images/CMS"
+    imagePath = imageUrl.removeprefix("https://l9golf.com/images/CMS")
+    fullPath = BASE_PATH + imagePath
+    print(fullPath)
+    try:
+        p = Path(fullPath)
+        Path.unlink(p)
+        return "success", 200
+    except Exception as e:
+        app.logger.error(f"Error during CMS file delete: {e}")
+        return "error", 500
 
 
 if __name__ == "__main__":
