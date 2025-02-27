@@ -2466,53 +2466,45 @@ def deleteCmsImage():
         return "Unauthorized", 401
 
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-BASE_PATH = Path("/var/www/images/CMS").resolve()
+app = Flask(__name__)
+
+BASE_PATH = "/var/www/images/CMS"  # Adjust to match the `/folderStructure` endpoint
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}  # Allowed image types
 
 
 @app.route("/searchCmsImage", methods=["GET"])
 def searchCmsImage():
     if os.getenv("NEXT_API_TOKEN") != request.headers.get("Auth-Token"):
-        return "Unauthorized", 401
+        return jsonify({"error": "Unauthorized"}), 401
 
     search_query = request.args.get("imageName", "").strip()
-    matched_images = []
-    folder_images = []
-    matched_directories = []
+    if not search_query:
+        return jsonify({"error": "Missing search query"}), 400
+
+    matched_items = []
 
     try:
-        if search_query:
-            image_matches = [
-                p
-                for p in BASE_PATH.rglob(f"*{search_query}*")
-                if p.is_file() and p.suffix.lower() in ALLOWED_EXTENSIONS
-            ]
+        base_path = Path(BASE_PATH)
 
-            if image_matches:
-                matched_images = [str(p.relative_to(BASE_PATH)) for p in image_matches]
+        # Match files and directories
+        for entry in base_path.rglob(f"*{search_query}*"):
+            if entry.name.startswith("."):
+                continue
 
-            dir_matches = [
-                p for p in BASE_PATH.rglob(f"*{search_query}*") if p.is_dir()
-            ]
-            if dir_matches:
-                matched_directories = [
-                    str(p.relative_to(BASE_PATH)) for p in dir_matches
-                ]
+            matched_items.append(
+                {
+                    "name": entry.name,
+                    "is_directory": entry.is_dir(),
+                    "path": str(
+                        entry.resolve()
+                    ),  # Matches the format in `getFolderStructure`
+                }
+            )
 
-                search_path = dir_matches[0]
-                folder_images = [
-                    str(entry.relative_to(BASE_PATH))
-                    for entry in search_path.iterdir()
-                    if entry.is_file() and entry.suffix.lower() in ALLOWED_EXTENSIONS
-                ]
+        # Sort with directories first
+        matched_items.sort(key=lambda x: x["is_directory"], reverse=True)
 
-        return jsonify(
-            {
-                "matchedImages": matched_images,  # Images that matched by name
-                "matchedDirectories": matched_directories,  # Folders that matched by name
-                "folderImages": folder_images,  # Images found inside a matched folder
-            }
-        )
+        return jsonify(matched_items)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
