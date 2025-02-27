@@ -2466,8 +2466,6 @@ def deleteCmsImage():
         return "Unauthorized", 401
 
 
-app = Flask(__name__)
-
 BASE_PATH = "/var/www/images/CMS"  # Adjust to match the `/folderStructure` endpoint
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}  # Allowed image types
 
