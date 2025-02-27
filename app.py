@@ -2476,13 +2476,12 @@ def searchCmsImage():
         return "Unauthorized", 401
 
     search_query = request.args.get("imageName", "").strip()
-    matched_images = []  # List of all matched images
-    folder_images = []  # List of images inside the matched folder
-    matched_directories = []  # List of matched directories
+    matched_images = []
+    folder_images = []
+    matched_directories = []
 
     try:
         if search_query:
-            # Find all images matching the wildcard search in all subdirectories
             image_matches = [
                 p
                 for p in BASE_PATH.rglob(f"*{search_query}*")
@@ -2492,7 +2491,6 @@ def searchCmsImage():
             if image_matches:
                 matched_images = [str(p.relative_to(BASE_PATH)) for p in image_matches]
 
-            # Find all directories matching the wildcard search
             dir_matches = [
                 p for p in BASE_PATH.rglob(f"*{search_query}*") if p.is_dir()
             ]
@@ -2501,7 +2499,6 @@ def searchCmsImage():
                     str(p.relative_to(BASE_PATH)) for p in dir_matches
                 ]
 
-                # If a folder is found, return images inside the FIRST matched folder
                 search_path = dir_matches[0]
                 folder_images = [
                     str(entry.relative_to(BASE_PATH))
