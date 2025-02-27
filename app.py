@@ -2466,5 +2466,60 @@ def deleteCmsImage():
         return "Unauthorized", 401
 
 
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+BASE_PATH = Path("/var/www/images/CMS").resolve()
+
+
+@app.route("/searchCmsImage", methods=["GET"])
+def searchCmsImage():
+    if os.getenv("NEXT_API_TOKEN") != request.headers.get("Auth-Token"):
+        return "Unauthorized", 401
+
+    search_query = request.args.get("imageName", "").strip()
+    matched_images = []  # List of all matched images
+    folder_images = []  # List of images inside the matched folder
+    matched_directories = []  # List of matched directories
+
+    try:
+        if search_query:
+            # Find all images matching the wildcard search in all subdirectories
+            image_matches = [
+                p
+                for p in BASE_PATH.rglob(f"*{search_query}*")
+                if p.is_file() and p.suffix.lower() in ALLOWED_EXTENSIONS
+            ]
+
+            if image_matches:
+                matched_images = [str(p.relative_to(BASE_PATH)) for p in image_matches]
+
+            # Find all directories matching the wildcard search
+            dir_matches = [
+                p for p in BASE_PATH.rglob(f"*{search_query}*") if p.is_dir()
+            ]
+            if dir_matches:
+                matched_directories = [
+                    str(p.relative_to(BASE_PATH)) for p in dir_matches
+                ]
+
+                # If a folder is found, return images inside the FIRST matched folder
+                search_path = dir_matches[0]
+                folder_images = [
+                    str(entry.relative_to(BASE_PATH))
+                    for entry in search_path.iterdir()
+                    if entry.is_file() and entry.suffix.lower() in ALLOWED_EXTENSIONS
+                ]
+
+        return jsonify(
+            {
+                "matchedImages": matched_images,  # Images that matched by name
+                "matchedDirectories": matched_directories,  # Folders that matched by name
+                "folderImages": folder_images,  # Images found inside a matched folder
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 if __name__ == "__main__":
     app.run()
