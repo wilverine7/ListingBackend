@@ -2479,25 +2479,30 @@ def searchCmsImage():
     if not search_query:
         return jsonify({"error": "Missing search query"}), 400
 
+    base_path = Path(BASE_PATH)
+    search_variations = {
+        search_query,
+        search_query.replace(" ", "_"),
+        search_query.replace(" ", "-"),
+    }
     matched_items = []
 
     try:
-        base_path = Path(BASE_PATH)
+        for variation in search_variations:
+            for entry in base_path.rglob(f"*{variation}*"):
+                if entry.name.startswith("."):
+                    continue
 
-        # Match files and directories
-        for entry in base_path.rglob(f"*{search_query}*"):
-            if entry.name.startswith("."):
-                continue
+                matched_items.append(
+                    {
+                        "name": entry.name,
+                        "is_directory": entry.is_dir(),
+                        "path": str(entry.resolve()),
+                    }
+                )
 
-            matched_items.append(
-                {
-                    "name": entry.name,
-                    "is_directory": entry.is_dir(),
-                    "path": str(
-                        entry.resolve()
-                    ),  # Matches the format in `getFolderStructure`
-                }
-            )
+        # Remove duplicates (in case multiple variations match the same file)
+        matched_items = list({item["path"]: item for item in matched_items}.values())
 
         # Sort with directories first
         matched_items.sort(key=lambda x: x["is_directory"], reverse=True)
